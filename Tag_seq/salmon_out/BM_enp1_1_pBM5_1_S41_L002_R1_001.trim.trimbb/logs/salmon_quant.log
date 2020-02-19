@@ -1,0 +1,42 @@
+[2019-11-01 17:54:21.774] [jointLog] [info] parsing read library format
+[2019-11-01 17:54:21.774] [jointLog] [info] There is 1 library.
+[2019-11-01 17:54:21.827] [jointLog] [info] Loading Quasi index
+[2019-11-01 17:54:21.827] [jointLog] [info] Loading 32-bit quasi index
+[2019-11-01 17:54:22.264] [jointLog] [info] done
+[2019-11-01 17:54:22.264] [jointLog] [info] Index contained 12378 targets
+[2019-11-01 17:54:22.609] [jointLog] [info] Automatically detected most likely library type as U
+[2019-11-01 17:54:32.746] [jointLog] [info] Computed 15690 rich equivalence classes for further processing
+[2019-11-01 17:54:32.746] [jointLog] [info] Counted 3504431 total reads in the equivalence classes 
+[2019-11-01 17:54:32.748] [jointLog] [warning] 0.731188% of fragments were shorter than the k used to build the index (31).
+If this fraction is too large, consider re-building the index with a smaller k.
+The minimum read size found was 20.
+
+
+[2019-11-01 17:54:32.749] [jointLog] [warning] Only 3504431 fragments were mapped, but the number of burn-in fragments was set to 5000000.
+The effective lengths have been computed using the observed mappings.
+
+[2019-11-01 17:54:32.749] [jointLog] [info] Mapping rate = 67.6737%
+
+[2019-11-01 17:54:32.749] [jointLog] [info] finished quantifyLibrary()
+[2019-11-01 17:54:32.749] [jointLog] [info] Starting optimizer
+[2019-11-01 17:54:32.753] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2019-11-01 17:54:32.753] [jointLog] [info] iteration = 0 | max rel diff. = 180.973
+[2019-11-01 17:54:32.784] [jointLog] [info] iteration = 100 | max rel diff. = 0.0914397
+[2019-11-01 17:54:32.816] [jointLog] [info] iteration = 200 | max rel diff. = 0.0463211
+[2019-11-01 17:54:32.845] [jointLog] [info] iteration = 300 | max rel diff. = 0.0313296
+[2019-11-01 17:54:32.876] [jointLog] [info] iteration = 400 | max rel diff. = 0.0258196
+[2019-11-01 17:54:32.746] [fileLog] [info] 
+At end of round 0
+==================
+Observed 5178420 total fragments (5178420 in most recent round)
+
+[2019-11-01 17:54:32.904] [jointLog] [info] iteration = 500 | max rel diff. = 0.0186093
+[2019-11-01 17:54:32.933] [jointLog] [info] iteration = 600 | max rel diff. = 0.014077
+[2019-11-01 17:54:32.951] [jointLog] [info] iteration = 667 | max rel diff. = 0.00978434
+[2019-11-01 17:54:32.952] [jointLog] [info] Finished optimizer
+[2019-11-01 17:54:32.952] [jointLog] [info] writing output 
+
+[2019-11-01 17:54:32.967] [jointLog] [warning] NOTE: Read Lib [BM_enp1_1_pBM5_1_S41_L002_R1_001.trim.trimbb.fastq] :
+
+Detected a *potential* strand bias > 1% in an unstranded protocol check the file: /home/biplab/DATA2/Tag_Seq_Analysis/pervasive_salmon_outy/BM_enp1_1_pBM5_1_S41_L002_R1_001.trim.trimbb/lib_format_counts.json for details
+

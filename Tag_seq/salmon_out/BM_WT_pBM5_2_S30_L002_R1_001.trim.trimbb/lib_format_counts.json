@@ -1,0 +1,21 @@
+{
+    "read_files": "BM_WT_pBM5_2_S30_L002_R1_001.trim.trimbb.fastq",
+    "expected_format": "SR",
+    "compatible_fragment_ratio": 0.7674712143208388,
+    "num_compatible_fragments": 2615766,
+    "num_assigned_fragments": 3408292,
+    "num_consistent_mappings": 2786017,
+    "num_inconsistent_mappings": 1100279,
+    "MSF": 0,
+    "OSF": 0,
+    "ISF": 0,
+    "MSR": 0,
+    "OSR": 0,
+    "ISR": 0,
+    "SF": 1100279,
+    "SR": 2786017,
+    "MU": 0,
+    "OU": 0,
+    "IU": 0,
+    "U": 0
+}

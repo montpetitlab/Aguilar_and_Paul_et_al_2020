@@ -1,0 +1,22 @@
+{
+    "read_files": "BM_enp1_1_pBM766_3_S46_L002_R1_001.trim.trimbb.fastq",
+    "expected_format": "U",
+    "compatible_fragment_ratio": 1.0,
+    "num_compatible_fragments": 3766520,
+    "num_assigned_fragments": 3766520,
+    "num_consistent_mappings": 4500478,
+    "num_inconsistent_mappings": 0,
+    "strand_mapping_bias": 0.3473930991330254,
+    "MSF": 0,
+    "OSF": 0,
+    "ISF": 0,
+    "MSR": 0,
+    "OSR": 0,
+    "ISR": 0,
+    "SF": 1563435,
+    "SR": 2937043,
+    "MU": 0,
+    "OU": 0,
+    "IU": 0,
+    "U": 0
+}

@@ -1,0 +1,9 @@
+{
+    "salmon_version": "0.8.2",
+    "index": "/home/biplab/DATA2/Tag_Seq_Analysis/all_transcript1",
+    "libType": "A",
+    "unmatedReads": "BM_WT_pBM5_3_S31_L002_R1_001.trim.trimbb.fastq",
+    "writeUnmappedNames": [],
+    "output": "/home/biplab/DATA2/Tag_Seq_Analysis/pervasive_salmon_outy/BM_WT_pBM5_3_S31_L002_R1_001.trim.trimbb",
+    "auxDir": "aux_info"
+}
