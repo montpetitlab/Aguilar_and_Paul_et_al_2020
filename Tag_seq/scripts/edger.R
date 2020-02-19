@@ -1,12 +1,22 @@
 options( warn = -1 )
-library('DESeq2')
+library('edgeR')
 library('data.table')
 library('stats')
 library('ggplot2')
 library(dplyr)
 library(tidyverse)
-
-dr <- list.files("/Users/montpetitlab1/Downloads/pervasive_salmon_outy", pattern = "*count.sf*", recursive = T, full.names = T)
+setwd("~/Paul_et_al_2019/Tag_seq/")
+dr <- list.files("salmon_out", pattern = "*count.sf*", recursive = T, full.names = T)
+salmon_out <- read.csv(dr[1], sep = "\t")
+sample_name <- sub("_001.trim.trimbb", "", strsplit(dr[1], split = "/")[[1]][2])
+colnames(salmon_out) <- c("Name", sample_name)
+for (i in 2:length(dr)){
+  temp <- read.csv(dr[i], sep = "\t")
+  sample_name <- sub("_001.trim.trimbb", "", strsplit(dr[i], split = "/")[[1]][2])
+  colnames(temp) <- c("Name", sample_name)
+  salmon_out <- merge(salmon_out, temp, by = "Name", all = T)
+  }
+write.csv(salmon_out, file = "salmon_output.csv")
 counts <- readDGE(dr)
 group <- c("csl4ph_pBM5", "csl4ph_pBM5","csl4ph_pBM5","csl4ph_pBM766", "csl4ph_pBM766",
            "csl4ph_pBM766", "enp1_1_pBM5", "enp1_1_pBM5", "enp1_1_pBM5",  
