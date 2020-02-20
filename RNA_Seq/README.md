@@ -4,3 +4,4 @@ This github repository contain code for analysis of RNA-Seq and Tag-Seq data whi
 ## RNA-Seq analysis:
 ### Alignment to the the genome by using hisat2 software, below the code for alignment
 ## Taq-Seq analysis:
+Taq-Seq reads are pre-processed by trimmomatic and 
