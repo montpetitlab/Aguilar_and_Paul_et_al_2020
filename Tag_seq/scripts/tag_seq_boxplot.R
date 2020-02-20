@@ -6,21 +6,15 @@ library(ComplexHeatmap)
 library(RColorBrewer)
 library(circlize)
 library(plyr)
-
-WT_pBM5vscsl4ph_pBM5 <- read.csv("~/Downloads/files/WT_pBM5vscsl4ph_pBM5.tsv", sep = "\t")[,c(6,1)]
-WT_pBM5vscsl4ph_pBM766 <- read.csv("~/Downloads/files/WT_pBM5vscsl4ph_pBM766.tsv", sep = "\t")[,c(6,1)]
-WT_pBM5vsenp1_1_pBM5 <- read.csv("~/Downloads/files/WT_pBM5vsenp1_1_pBM5.tsv", sep = "\t")[,c(6,1)]
-WT_pBM5vsenp1_1_pBM766 <- read.csv("~/Downloads/files/WT_pBM5vsenp1_1_pBM766.tsv", sep = "\t")[,c(6,1)]
-WT_pBM5vsWT_pBM766 <- read.csv("~/Downloads/files/WT_pBM5vsWT_pBM766.tsv", sep = "\t")[,c(6,1)]
-
-WT_pBM766vscsl4ph_pBM766 <- read.csv("~/Desktop/WT_pBM766vscsl4ph_pBM766.tsv", sep = "\t")[,c(6,1)]
-
-WT_pBM766vsenp1_1_pBM766 <- read.csv("~/Desktop/WT_pBM766vsenp1_1_pBM766.tsv", sep = "\t")[,c(6,1)]
-
-WT_pBM5vsWT_pBM766 <- read.csv("~/Downloads/files/WT_pBM5vsWT_pBM766.tsv", sep = "\t")[,c(6,1)]
-
-
-
+setwd("~/Paul_et_al_2019/Tag_seq/")
+WT_pBM5vscsl4ph_pBM5 <- read.csv("output_edgeR/WT_pBM5vscsl4ph_pBM5.tsv", sep = "\t")[,c(6,1)]
+WT_pBM5vscsl4ph_pBM766 <- read.csv("output_edgeR/WT_pBM5vscsl4ph_pBM766.tsv", sep = "\t")[,c(6,1)]
+WT_pBM5vsenp1_1_pBM5 <- read.csv("output_edgeR/WT_pBM5vsenp1_1_pBM5.tsv", sep = "\t")[,c(6,1)]
+WT_pBM5vsenp1_1_pBM766 <- read.csv("output_edgeR/WT_pBM5vsenp1_1_pBM766.tsv", sep = "\t")[,c(6,1)]
+WT_pBM5vsWT_pBM766 <- read.csv("output_edgeR/WT_pBM5vsWT_pBM766.tsv", sep = "\t")[,c(6,1)]
+WT_pBM766vscsl4ph_pBM766 <- read.csv("output_edgeR/WT_pBM766vscsl4ph_pBM766.tsv", sep = "\t")[,c(6,1)]
+WT_pBM766vsenp1_1_pBM766 <- read.csv("output_edgeR/WT_pBM766vsenp1_1_pBM766.tsv", sep = "\t")[,c(6,1)]
+WT_pBM5vsWT_pBM766 <- read.csv("output_edgeR/WT_pBM5vsWT_pBM766.tsv", sep = "\t")[,c(6,1)]
 
 temp <- merge(WT_pBM5vscsl4ph_pBM5, WT_pBM5vscsl4ph_pBM766, by="mrna", all = T)
 temp <- merge(temp, WT_pBM5vsenp1_1_pBM5, by="mrna", all = T)

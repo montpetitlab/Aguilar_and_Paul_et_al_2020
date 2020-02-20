@@ -4,7 +4,7 @@ library('data.table')
 library('stats')
 library('ggplot2')
 library('tidyverse')
-setwd("~/Desktop/Paul_et_al_2019/")
+setwd("~/Paul_et_al_2019/RNA_Seq/")
 wt_vs_mutants_d <- fread("./results/output_feature_count.csv", header = T, sep = ",")
 #---------------------------------- DESEQ2 RB ---------------------------------------------------
 
