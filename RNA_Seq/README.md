@@ -12,4 +12,18 @@ hisat2 -p 4 --fr -x ~/DATA1/annotation/R64-1-1/Sequence/WholeGenomeFasta/genome 
 
 done
 ```
-## Taq-Seq analysis:
+### Counting reads by featurecount R package by running R scripts file 
+### Differential expression analysis by using the R package DESeq2 by running R scripts file
+### Log2FC data from DESeq2 were visualized by running R script for figures
+### snoRNA analysis were done by using Deeptools in command lines. Scripts for generating snoRNA figure
+convert bam file to bw file:
+```
+bamCoverage -b reads.bam -o coverage.bw
+```
+Computmatrix for plotting:
+```
+computeMatrix scale-regions -S <list of bigwig files> -R <bed file> --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o matrix.mat.gz
+```
+Code for metageneplot:
+
+code for heatmap:
