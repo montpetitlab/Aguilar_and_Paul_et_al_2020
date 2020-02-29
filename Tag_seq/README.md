@@ -38,9 +38,20 @@ salmon quant -i ~/DATA2/Tag_Seq_Analysis/all_transcript1 -l A -r $i --writeUnmap
 done
 ```
 
-### Differential expression analysis by using the R package DESeq2 by running edgeR.R scripts file
-### Log2FC data from DESeq2 were visualized by running R script for figures
+### Differential expression analysis by using the R package edgeR by running edgeR.R scripts file
+### Log2FC data from edgeR were visualized by running R script for figures
 ### snoRNA analysis were done by using Deeptools in command lines. Scripts for generating snoRNA figure
+Aligning reads to genome:
+```
+for f in `ls *.fastq | sed 's/_R[12].fastq//g' | sort -u`
+
+do
+
+hisat2 -p 4 --fr -x ~/DATA1/annotation/R64-1-1/Sequence/WholeGenomeFasta/genome --known-splicesite-infile ~/DATA1/annotation/R64-1-1/Annotation/Genes/yeast_splice_sites.txt -1 ${f}_R1.fastq -2 ${f}_R2.fastq | samtools view -Sb > ~/DATA2/hisat2_out/${f}.bam
+
+done
+```
+
 convert bam file to bw file:
 ```
 bamCoverage -b <file.bam> -o <file.bw>
