@@ -1,0 +1,7 @@
+channels:
+ - conda-forge  
+ - bioconda
+ - defaults
+dependencies:
+ - bioconductor-deseq2=1.26.0
+ - bioconductor-tximeta=1.4.0
