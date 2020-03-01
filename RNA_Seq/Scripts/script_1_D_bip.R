@@ -4,10 +4,10 @@ library(circlize)
 library(ggplot2)
 library(ggdendro)
 library(ggpubr)
-setwd("~/Desktop/Paul_et_al_2019/")
+setwd("~/Paul_et_al_2019/")
 
-fc_df_rb <- read.csv("./results/log2FC_all_rb.tsv", sep='\t')
-transcript = fread('./annotation/yeast_all_annot.gtf')
+fc_df_rb <- read.csv("./RNA_Seq/results/log2FC_all_rb.tsv", sep='\t')
+transcript = fread('./RNA_Seq/annotation/yeast_all_annot.gtf')
 
 #----------------------------------------------------------------------------------
 type_rb = c('rrp6', 'dis3', 'csl4', 'enp1', 'srm1')
@@ -47,7 +47,7 @@ kclus <- kmeans(to_plot, 6)
 split <- paste0("C", kclus$cluster)
 
 ht = Heatmap(to_plot, split=split, name = 'log2FC', gap = unit(2, "mm"),
-       col = colorRamp2(c(-5, 0, 5), c('#0000CC', '#FFFFFF', '#FADA0A')), width = unit(6,'cm'),
+       col = colorRamp2(c(-5, 0, 5), c('blue', '#FFFFFF', 'red')), width = unit(6,'cm'),
        top_annotation_height = unit(10, "mm"),row_title='Kmean clusters',
        show_row_names = FALSE, show_column_names = TRUE, cluster_rows = FALSE, cluster_columns = FALSE)
 
@@ -58,3 +58,21 @@ ht_list = ht + ha
 png("./Figures/figure1d.png")
 draw(ht_list, row_title='Kmean clusters')
 dev.off()
+
+set.seed(123)
+
+# function to compute total within-cluster sum of square 
+wss <- function(k) {
+  kmeans(to_plot, k, nstart = 10 )$tot.withinss
+}
+
+# Compute and plot wss for k = 1 to k = 15
+k.values <- 1:15
+
+# extract wss for 2-15 clusters
+wss_values <- map_dbl(k.values, wss)
+
+plot(k.values, wss_values,
+     type="b", pch = 19, frame = FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
