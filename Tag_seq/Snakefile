@@ -12,10 +12,7 @@ rule all:
         "outputs/deseq2/res_wt_sig.csv",
         "outputs/deseq2/res_csl4_sig.csv",
         "outputs/deseq2/res_enp1_sig.csv",
-        "outputs/deseq2/res_wt.csv",
-        "outputs/deseq2/res_csl4.csv",
-        "outputs/deseq2/res_enp1.csv"
-
+        "outputs/figures/uts.pdf"
 ##################################
 ## PREPROCESSING
 ##################################
@@ -41,18 +38,55 @@ rule bbduk_qc:
     '''
 
 ##################################
+## GENERATE TRANSCRIPT REFERENCE
+##################################
+
+# To characterize the expression of pervasive transcripts, 
+# we need to use a transcriptome that contains these transcripts.
+# We can generate this reference by extracting genomic segments
+# that are annotated in SGD as pervasive transcripts. These 
+# annotations were compiled by Ellision et al (DOI: 10.1534/genetics.119.302262)
+# We download these annotations as bed files below, and then
+# use these bedfiles to extract pervasive transcripts and ORFs
+# from the genome.
+# The original annotations are available at 
+# https://github.com/mae92/Paf1C-Transcriptome-Analysis-Code
+# however, because github is non-archival, we have transfered
+# these files to OSF, and download them from there. 
+
+# We use sacCer3 from UCSC, originally obtained from the 
+# following ftp link:
+#
+# In this folder structure, the genome is saved as "genome.fa".
+# We have renamed it to sacCer3.fa to reflect its contents.
+# We have also uploaded this to OSF, and use that link for
+# downloading the file below. 
+
+rule download_transcript_bedfile:
+    output: 'inputs/pervasive_transcripts/all_transcripts.bed'
+    shell:"wget -O {output} https://osf.io/ynh6z/download"
+
+rule download_sacCer3:
+    output: "inputs/genome/sacCer3.fa"
+    shell:"wget -O {output} https://osf.io/r5cj6/download"
+
+rule create_transcripts:
+    output: "inputs/genome/sacCer3_transcripts.fa"
+    input: 
+        bed = 'inputs/pervasive_transcripts/all_transcripts.bed',
+        genome = "inputs/genome/sacCer3.fa"
+    conda: "bedtools.yml"
+    shell:'''
+    bedtools getfasta -fi {input.genome} -bed {input.bed} -name > {output}  
+    '''
+
+##################################
 ## QUANTIFICATION
 ##################################
 
-#rule download_transcriptome:
-#    output: 'inputs/r64/GCA_000146045.2_R64_rna_from_genomic.fna.gz'
-#    shell:'''
-#    curl -L -o {output} ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/146/045/GCA_000146045.2_R64/GCA_000146045.2_R64_rna_from_genomic.fna.gz
-#    '''
-
 rule index_transcriptome:
-    output: directory('inputs/all_transcript1_index')
-    input: 'inputs/all_transcript1.gz'
+    output: directory('inputs/genome/sacCer3_transcripts_index')
+    input: "inputs/genome/sacCer3_transcripts.fa"
     conda: 'salmon.yml'
     shell:'''
     salmon index -t {input} -i {output}
@@ -62,11 +96,11 @@ rule salmon:
     output: 'outputs/quant/{sample}_quant/quant.sf',
     input:
         fq = 'outputs/quality/{sample}.trimbb.fq.gz',
-        indx = directory('inputs/all_transcript1_index')
+        indx = directory('inputs/genome/sacCer3_transcripts_index')
     conda: 'salmon.yml'
     params: outdir = "outputs/quant/{sample}_quant/"
     shell:'''
-    salmon quant -i {input.indx} -l A -r {input.fq} -o {params.outdir}
+    salmon quant -i {input.indx} -l A -r {input.fq} -o {params.outdir} --validateMappings
     '''
 
 #####################################
@@ -77,8 +111,7 @@ rule make_counts:
     output: counts = "outputs/counts/tag_seq_counts.csv"
     input: 
         expand("outputs/quant/{sample}_quant/quant.sf", sample = SAMPLES),
-        samples = "inputs/samples.csv",
-        tx2gene = "inputs/yeast_tx2gene.csv"
+        samples = "inputs/samples.csv"
     conda: "diffex.yml" 
     script: "scripts/make_counts.R"
 
@@ -96,6 +129,15 @@ rule deseq2:
     #conda: "diffex.yml"
     script: "scripts/deseq2.R"
 
+rule plot_uts:
+    output: 
+        fig = "outputs/figures/uts.pdf"
+    input:
+        "outputs/deseq2/res_wt.csv",
+        "outputs/deseq2/res_csl4.csv",
+        "outputs/deseq2/res_enp1.csv"
+    conda: "plot.yml"
+    script: "scripts/plot_uts.R"
 #####################################
 ## DEEPTOOLS
 #####################################
