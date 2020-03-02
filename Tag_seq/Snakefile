@@ -12,7 +12,9 @@ rule all:
         "outputs/deseq2/res_wt_sig.csv",
         "outputs/deseq2/res_csl4_sig.csv",
         "outputs/deseq2/res_enp1_sig.csv",
-        "outputs/figures/uts.pdf"
+        "outputs/figures/uts.pdf",
+        "outputs/figures/snoRNA_profile.png"
+
 ##################################
 ## PREPROCESSING
 ##################################
@@ -138,6 +140,71 @@ rule plot_uts:
         "outputs/deseq2/res_enp1.csv"
     conda: "plot.yml"
     script: "scripts/plot_uts.R"
+
 #####################################
 ## DEEPTOOLS
 #####################################
+
+rule hisat2_build:
+    input: "inputs/genome/sacCer3.fa"
+    output: "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2-build {input} inputs/genome/sacCer3_hisat/sacCer3_hisat
+    """
+
+rule hisat2_align:
+    input:
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2",
+        reads = 'outputs/quality/{sample}.trimbb.fq.gz',
+    output: "outputs/hisat/{sample}.bam"
+    params: 
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2 -p 4 -x {params.indx} -U {input.reads} | samtools view -Sb > {output}
+    """
+
+rule sort_bam:
+    input: "outputs/hisat/{sample}.bam"
+    output: "outputs/hisat/{sample}.sort.bam"
+    conda: "hisat.yml"
+    shell:'''
+    samtools sort {input} > {output}
+    '''
+ 
+rule index_bam:
+    input: "outputs/hisat/{sample}.sort.bam"
+    output: "outputs/hisat/{sample}.sort.bam.bai"
+    conda: "hisat.yml"
+    shell:"""
+    samtools index {input}    
+    """
+
+rule bam_coverage:
+    input: 
+        bam = "outputs/hisat/{sample}.sort.bam",
+        indx = "outputs/hisat/{sample}.sort.bam.bai"
+    output: "outputs/deeptools/{sample}.bw"
+    conda: "deeptools.yml"
+    shell:"""
+    bamCoverage -b {input.bam} -o {output} --normalizeUsing RPKM
+    """
+
+rule compute_matrix:
+    input: 
+        bw = expand("outputs/deeptools/{sample}.bw", sample = SAMPLES),
+        bed = 'inputs/pervasive_transcripts/snoRNA.sorted.bed'
+    output: "outputs/deeptols/matrix.mat.gz"
+    conda: "deeptools.yml"
+    shell:"""
+    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o {output}
+    """
+
+rule plot:
+    input: "outputs/deeptols/matrix.mat.gz"
+    output: "outputs/figures/snoRNA_profile.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotProfile -m {input} --perGroup -out {output}
+    """
