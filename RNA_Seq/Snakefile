@@ -1,0 +1,151 @@
+RIBO = ['HI.3202.005.Index_20.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d1',
+        'HI.3202.005.Index_21.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d2',
+        'HI.3202.005.Index_22.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d3',
+        'HI.4535.001.Index_13.CA_Dis3-1-4',
+        'HI.4535.001.Index_7.CA_Dis3-1-3',
+        'HI.3758.002.Index_14.BM-MO_dpl-enp1-37C-90-4-1',
+        'HI.3758.002.Index_15.BM-MO_dpl-enp1-37C-90-4-2',
+        'HI.4535.001.Index_16.CA_Rrp6-delta-5',
+        'HI.4535.001.Index_18.CA_Rrp6-delta-6',
+        'HI.3758.004.Index_25.BM-MO_dpl-srm1-37C-90-8-1',
+        'HI.3758.004.Index_27.BM-MO_dpl-srm1-37C-90-8-2',
+        'HI.4535.001.Index_2.CA_WT-1',
+        'HI.4535.001.Index_4.CA_WT-2']
+
+rule all:
+    input:
+        # Differential expression
+        "outputs/deseq2/res_csl4ph.csv",
+        "outputs/deseq2/res_csl4ph_sig.csv",
+        "outputs/deseq2/res_enp1.csv", 
+        "outputs/deseq2/res_enp1_sig.csv", 
+        "outputs/deseq2/res_dis3.csv", 
+        "outputs/deseq2/res_dis3_sig.csv", 
+        "outputs/deseq2/res_rrp6.csv", 
+        "outputs/deseq2/res_rrp6_sig.csv", 
+        "outputs/deseq2/res_srm1.csv", 
+        "outputs/deseq2/res_srm1_sig.csv", 
+        # quant
+        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+
+##################################
+## GENERATE TRANSCRIPT REFERENCE
+##################################
+
+# To characterize the expression of pervasive transcripts, 
+# we need to use a transcriptome that contains these transcripts.
+# We can generate this reference by extracting genomic segments
+# that are annotated in SGD as pervasive transcripts. These 
+# annotations were compiled by Ellision et al (DOI: 10.1534/genetics.119.302262)
+# We download these annotations as bed files below, and then
+# use these bedfiles to extract pervasive transcripts and ORFs
+# from the genome.
+# The original annotations are available at 
+# https://github.com/mae92/Paf1C-Transcriptome-Analysis-Code
+# however, because github is non-archival, we have transfered
+# these files to OSF, and download them from there. 
+
+# We use sacCer3 from UCSC, originally obtained from the 
+# following ftp link:
+#
+# In this folder structure, the genome is saved as "genome.fa".
+# We have renamed it to sacCer3.fa to reflect its contents.
+# We have also uploaded this to OSF, and use that link for
+# downloading the file below. 
+
+rule download_transcript_bedfile:
+    output: 'inputs/pervasive_transcripts/all_transcripts.bed'
+    shell:"wget -O {output} https://osf.io/ynh6z/download"
+
+rule download_sacCer3:
+    output: "inputs/genome/sacCer3.fa"
+    shell:"wget -O {output} https://osf.io/r5cj6/download"
+
+rule create_transcripts:
+    output: "inputs/genome/sacCer3_transcripts.fa"
+    input: 
+        bed = 'inputs/pervasive_transcripts/all_transcripts.bed',
+        genome = "inputs/genome/sacCer3.fa"
+    conda: "bedtools.yml"
+    shell:'''
+    bedtools getfasta -fi {input.genome} -bed {input.bed} -name > {output}  
+    '''
+
+##################################
+## PREPROCESSING
+##################################
+
+rule trim:
+    output:
+        R1 = "outputs/ribo-trim/{ribo}_R1.fastq.gz", 
+        R2 = "outputs/ribo-trim/{ribo}_R2.fastq.gz",
+        O1 = "outputs/ribo-trim/{ribo}_O1.fastq.gz", 
+        O2 = "outputs/ribo-trim/{ribo}_O2.fastq.gz"
+    input:
+        R1 = "inputs/ribo-depleted/{ribo}_R1.fastq.gz", 
+        R2 = "inputs/ribo-depleted/{ribo}_R2.fastq.gz",
+        adapters = "inputs/adapters.fa"
+    conda: "trim.yml"
+    shell:'''
+    trimmomatic PE {input.R1} {input.R2} \
+            {output.R1} {output.O1} \
+            {output.R2} {output.O2} \
+            LEADING:2 TRAILING:2 SLIDINGWINDOW:4:2 \
+            ILLUMINACLIP:{input.adapters}:2:30:10 MINLEN:31
+    '''
+
+##################################
+## QUANTIFICATION
+##################################
+
+rule index_transcriptome:
+    output: directory('inputs/genome/sacCer3_transcripts_index')
+    input: "inputs/genome/sacCer3_transcripts.fa"
+    conda: 'salmon.yml'
+    shell:'''
+    salmon index -t {input} -i {output}
+    '''
+
+rule salmon:
+    output: 'outputs/quant/{ribo}_quant/quant.sf',
+    input:
+        R1 = 'outputs/ribo-trim/{ribo}_R1.fastq.gz',
+        R2 = 'outputs/ribo-trim/{ribo}_R2.fastq.gz',
+        indx = directory('inputs/genome/sacCer3_transcripts_index')
+    conda: 'salmon.yml'
+    params: outdir = "outputs/quant/{ribo}_quant/"
+    shell:'''
+    salmon quant -i {input.indx} -l A -1 {input.R1} -2 {input.R2} -o {params.outdir} --validateMappings
+    '''
+
+rule multiqc:
+    output: 'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+    input: expand('outputs/quant/{ribo}_quant/quant.sf', ribo = RIBO)
+    params: 
+        indir = "outputs/quant/",
+        outdir = "outputs/quant_multiqc"
+    conda: "multiqc.yml"
+    shell:''' 
+    multiqc -o {params.outdir} {params.indir} -f
+    '''
+#####################################
+## DIFFERENTIAL EXPRESSION
+#####################################
+
+rule deseq2:
+    output:
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        csl4ph_sig = "outputs/deseq2/res_csl4ph_sig.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        enp1_sig =  "outputs/deseq2/res_enp1_sig.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        dis3_sig =  "outputs/deseq2/res_dis3_sig.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        rrp6_sig = "outputs/deseq2/res_rrp6_sig.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv", 
+        srm1_sig = "outputs/deseq2/res_srm1_sig.csv", 
+    input: 
+        expand("outputs/quant/{ribo}_quant/quant.sf", ribo = RIBO),
+        samples = "inputs/ribo-samples.csv"
+    #conda: "diffex.yml" 
+    script: "Scripts/deseq2.R"
