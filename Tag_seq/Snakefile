@@ -195,14 +195,14 @@ rule compute_matrix:
     input: 
         bw = expand("outputs/deeptools/{sample}.bw", sample = SAMPLES),
         bed = 'inputs/pervasive_transcripts/snoRNA.sorted.bed'
-    output: "outputs/deeptols/matrix.mat.gz"
+    output: "outputs/deeptools/matrix.mat.gz"
     conda: "deeptools.yml"
     shell:"""
     computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o {output}
     """
 
 rule plot:
-    input: "outputs/deeptols/matrix.mat.gz"
+    input: "outputs/deeptools/matrix.mat.gz"
     output: "outputs/figures/snoRNA_profile.png"
     conda: "deeptools.yml"
     shell:"""
