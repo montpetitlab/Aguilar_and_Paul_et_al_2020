@@ -28,6 +28,7 @@ rule all:
         "outputs/diffex_figures/corr_plot.pdf",
         "outputs/diffex_figures/perc_map_ribo.pdf",
         "outputs/diffex_figures/transcript_accumulation.pdf",
+        "outputs/diffex_figures/rna_classes.pdf",
         # quant
         'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
 
@@ -185,18 +186,22 @@ rule transcript_accumulation:
     script: "Scripts/transcript_accumulation.R"
 
 rule download_rna_classes:
-'''
-Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
-DOI: https://doi.org/10.1016/j.cell.2013.07.047
-'''
+    '''
+    Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
+    DOI: https://doi.org/10.1016/j.cell.2013.07.047
+    '''
     output: "inputs/rna_classes.csv" 
     shell:'''
     wget -O {output} https://osf.io/gqnwh/download
     '''
 
 rule plot_rna_classes:
-    output:
+    output: rna_plt = "outputs/diffex_figures/rna_classes.pdf"
     input:
-        rna = "inputs/rna_classes.csv"
-        
-    script: "Scripts/..."
+        rna = "inputs/rna_classes.csv", 
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    script: "Scripts/rna_class_plot.R"

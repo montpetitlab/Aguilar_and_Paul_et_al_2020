@@ -1,13 +1,14 @@
 # RNA class
-
-library(dplyr)
 library(ggplot2)
 library(readr)
 library(org.Sc.sgd.db)
+library(tidyr)
+library(purrr)
+library(dplyr)
 
 # read in RNA classes and convert to long format
-rna_class <- read_csv("inputs/rna_classes.csv", skip = 1) %>%
-  select(I, II, III, IV, V, VI, VII, VIII, IX, X) %>%
+rna_class <- read_csv(snakemake@input[['rna']], skip = 1) %>%
+  dplyr::select(I, II, III, IV, V, VI, VII, VIII, IX, X) %>%
   pivot_longer(cols = I:X, names_to = "class", values_to = "gene")
 
 # convert gene names to ORF names
@@ -50,9 +51,11 @@ rna_class <- rna_class %>%
 
 # read in results of differential expression
 
-# files <- unlist(snakemake@input)
-files <- list.files("outputs/deseq2", full.names = T)
-files <- files[!grepl(pattern = "sig", files)]
+files <- c(snakemake@input[['csl4ph']], snakemake@input[['enp1']],
+           snakemake@input[['dis3']], snakemake@input[['rrp6']], 
+           snakemake@input[['srm1']])
+#files <- list.files("outputs/deseq2", full.names = T)
+#files <- files[!grepl(pattern = "sig", files)]
 
 res <- files[1:5] %>%
   purrr::set_names() %>% 
@@ -60,7 +63,7 @@ res <- files[1:5] %>%
   mutate(source = gsub("outputs\\/deseq2\\/res_", "", source)) %>%
   mutate(source = gsub("\\.csv", "", source)) %>%
   filter(padj < .01) %>%
-  select(source, X1, log2FoldChange)
+  dplyr::select(source, X1, log2FoldChange)
 
 # separate transcript names from coords
 res <- separate(data = res, col = X1, into = c("transcript", "coord"), sep = "::")
@@ -73,8 +76,10 @@ res <- res %>%
 # join with class info
 res <- left_join(res, rna_class, by = c("transcript" = "orf"))
 
+pdf(snakemake@output[["rna_plt"]], height = 5, width = 7)
 ggplot(res, aes(x = class, y = log2FoldChange)) +
   theme_minimal() +
   geom_boxplot(outlier.size = -1) + 
   facet_wrap(~source) +
   ylim(c(-5, 8))
+dev.off()
