@@ -1,14 +1,13 @@
 # percent of mapped reads that fall into each category
-setwd("~/github/Paul_et_al_2019/RNA_Seq/")
 library(readr)
 library(tximport)
 library(DESeq2)
 library(tidyr)
 library(ggplot2)
+library(dplyr)
 
 ## Read in metadata and counts
-# samples <- read_csv(snakemake@input[['samples']])
-samples <- read_csv("inputs/ribo-samples.csv")
+samples <- read_csv(snakemake@input[['samples']])
 counts <- tximport(files = samples$filename, type = "salmon", txOut = TRUE)
 
 ## extract normalized counts
@@ -30,7 +29,7 @@ dds_counts <- separate(data = dds_counts, col = transcript,
 ## CUT == CUT
 ## NUT == NUT
 ## ST  == SUT 
-## sn* == snNRA
+
 ## *_mRNA == mRNA
 ## ..-... == XUT
 
@@ -40,7 +39,11 @@ dds_counts$class <- ifelse(grepl(pattern = "NME1", x = dds_counts$class),
                            "mRNA", dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "ST", x = dds_counts$class),
                            "pervasive", dds_counts$class)
+snRNA <- c("LSR1", "snR14", "snR7-L", "snR7-S", "snR6", "snR19")
 dds_counts$class <- ifelse(grepl(pattern = "sn", x = dds_counts$class),
+                           ifelse(!dds_counts$class %in% snRNA,
+                           "snoRNA", "snRNA"), dds_counts$class)
+dds_counts$class <- ifelse(grepl(pattern = "LSR1", x = dds_counts$class),
                            "snRNA", dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "[FR]-", x = dds_counts$class),
                            "pervasive", dds_counts$class)
@@ -74,11 +77,13 @@ dds_counts_summarized <- left_join(dds_counts_long_summarized, dds_counts_sample
 dds_counts_summarized$percent_mapping <- dds_counts_summarized$sum_class / dds_counts_summarized$sum_sample
 
 
+pdf(snakemake@output[["perc_map_ribo"]], height = 5, width = 7)
 ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class)) +
   geom_bar(stat = "identity") +
   theme_classic() +
   labs(y = "fraction of reads mapped (ribo -)", x = "") +
   coord_flip() +
-  scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", snRNA = "#000000")) 
+  scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", snoRNA = "#FF8C00", snRNA = "#000000")) 
+dev.off()
 
   

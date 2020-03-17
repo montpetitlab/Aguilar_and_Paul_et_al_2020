@@ -25,6 +25,9 @@ rule all:
         "outputs/deseq2/res_rrp6_sig.csv", 
         "outputs/deseq2/res_srm1.csv", 
         "outputs/deseq2/res_srm1_sig.csv", 
+        "outputs/diffex_figures/corr_plot.pdf",
+        "outputs/diffex_figures/perc_map_ribo.pdf",
+        "outputs/diffex_figures/transcript_accumulation.pdf",
         # quant
         'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
 
@@ -149,3 +152,51 @@ rule deseq2:
         samples = "inputs/ribo-samples.csv"
     #conda: "diffex.yml" 
     script: "Scripts/deseq2.R"
+
+rule corr_plot:
+    output: corr_plot = "outputs/diffex_figures/corr_plot.pdf"
+    input: 
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    conda: "corr_plot.yml"
+    script: "Scripts/corr_plot.R"
+
+rule perc_map_ribo:
+    output: perc_map_ribo = "outputs/diffex_figures/perc_map_ribo.pdf"
+    input: 
+        expand("outputs/quant/{ribo}_quant/quant.sf", ribo = RIBO),
+        samples = "inputs/ribo-samples.csv"
+    #conda: "diffex.yml"
+    script: "Scripts/perc_map_ribo.R"
+
+rule transcript_accumulation:
+    output: accum_plot = "outputs/diffex_figures/transcript_accumulation.pdf"
+    input: 
+        samples = "inputs/ribo-samples.csv",
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    conda: "plot.yml"
+    script: "Scripts/transcript_accumulation.R"
+
+rule download_rna_classes:
+'''
+Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
+DOI: https://doi.org/10.1016/j.cell.2013.07.047
+'''
+    output: "inputs/rna_classes.csv" 
+    shell:'''
+    wget -O {output} https://osf.io/gqnwh/download
+    '''
+
+rule plot_rna_classes:
+    output:
+    input:
+        rna = "inputs/rna_classes.csv"
+        
+    script: "Scripts/..."
