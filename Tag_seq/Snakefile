@@ -13,7 +13,8 @@ rule all:
         "outputs/deseq2/res_csl4_sig.csv",
         "outputs/deseq2/res_enp1_sig.csv",
         "outputs/figures/uts.pdf",
-        "outputs/figures/snoRNA_profile.png"
+        "outputs/figures/snoRNA_profile.png",
+        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
 
 ##################################
 ## PREPROCESSING
@@ -103,6 +104,17 @@ rule salmon:
     params: outdir = "outputs/quant/{sample}_quant/"
     shell:'''
     salmon quant -i {input.indx} -l A -r {input.fq} -o {params.outdir} --validateMappings
+    '''
+
+rule multiqc:
+    output: 'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+    input: expand('outputs/quant/{sample}_quant/quant.sf', sample = SAMPLE)
+    params: 
+        indir = "outputs/quant/",
+        outdir = "outputs/quant_multiqc"
+    conda: "multiqc.yml"
+    shell:''' 
+    multiqc -o {params.outdir} {params.indir} -f
     '''
 
 #####################################
