@@ -6,7 +6,7 @@ library(tidyr)
 
 samples <- snakemake@input[["samples"]]
 files <- unlist(snakemake@input)
-res <- files[1:5] %>%
+res <- files[2:6] %>%
   purrr::set_names() %>% 
   map_dfr(read_csv, .id = "source") %>%
   mutate(source = gsub("outputs\\/deseq2\\/res_", "", source)) %>%
@@ -55,12 +55,16 @@ pervasive <- pervasive %>%
 
 pdf(snakemake@output[["accum_plot"]], height = 6, width = 7)
 ggplot(pervasive) + 
-  geom_line(aes(x=log2FoldChange, y= prop, color=source)) +
-  theme_classic() + 
-  facet_wrap(~class) + 
+  geom_line(aes(x=log2FoldChange, y= prop, color=source), size = 1.1, alpha = .7) +
+  theme_minimal() + 
+  facet_wrap(~class, scales = "free") + 
   xlim(c(-8, 10)) +
-  theme(legend.position = "bottom") +
+  theme(legend.position = "bottom", 
+        strip.background = element_blank(),
+        strip.text.x = element_blank()) +
   labs(y = "Total Fraction of Transcripts in Class",
-       x = "log2FC (mutant vs. control @ 37C)")
+       x = "log2FC (mutant vs. control @ 37C)") +
+  scale_color_manual(values = c(csl4ph = "#47a4e4", dis3 = "#575BE8", 
+                                enp1 = "#129060", rrp6 = "#D5551B", srm1 = "#E899CB"))
 dev.off()
 

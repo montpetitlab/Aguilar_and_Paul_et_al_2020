@@ -30,7 +30,11 @@ rule all:
         "outputs/diffex_figures/transcript_accumulation.pdf",
         "outputs/diffex_figures/rna_classes.pdf",
         # quant
-        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
+        # metagene
+        "outputs/figures/snoRNA_profile.png",
+        "outputs/figures/snoRNA_heatmap.png",
+        "outputs/figures/snoRNA_profile_summary.pdf"
 
 ##################################
 ## GENERATE TRANSCRIPT REFERENCE
@@ -205,3 +209,94 @@ rule plot_rna_classes:
         rrp6 = "outputs/deseq2/res_rrp6.csv", 
         srm1 = "outputs/deseq2/res_srm1.csv"
     script: "Scripts/rna_class_plot.R"
+
+#####################################
+## DEEPTOOLS
+#####################################
+
+rule hisat2_build:
+    input: "inputs/genome/sacCer3.fa"
+    output: "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2-build {input} inputs/genome/sacCer3_hisat/sacCer3_hisat
+    """
+
+rule hisat2_align:
+    input:
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2",
+        R1 = "outputs/ribo-trim/{ribo}_R1.fastq.gz", 
+        R2 = "outputs/ribo-trim/{ribo}_R2.fastq.gz",
+    output: "outputs/hisat/{ribo}.bam"
+    params: 
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2 -p 4 -x {params.indx} -1 {input.R1} -2 {input.R2} | samtools view -Sb > {output}
+    """
+
+rule sort_bam:
+    input: "outputs/hisat/{ribo}.bam"
+    output: "outputs/hisat/{ribo}.sort.bam"
+    conda: "hisat.yml"
+    shell:'''
+    samtools sort {input} > {output}
+    '''
+ 
+rule index_bam:
+    input: "outputs/hisat/{ribo}.sort.bam"
+    output: "outputs/hisat/{ribo}.sort.bam.bai"
+    conda: "hisat.yml"
+    shell:"""
+    samtools index {input}    
+    """
+
+rule bam_coverage:
+    input: 
+        bam = "outputs/hisat/{ribo}.sort.bam",
+        indx = "outputs/hisat/{ribo}.sort.bam.bai"
+    output: "outputs/deeptools/{ribo}.bw"
+    conda: "deeptools.yml"
+    shell:"""
+    bamCoverage -b {input.bam} -o {output} --normalizeUsing RPKM
+    """
+
+rule download_snoRNA_bed:
+    output: "inputs/pervasive_transcripts/snoRNA.sorted.bed"
+    shell:'''
+    wget -O {output} https://osf.io/9n4fu/download
+    '''
+
+rule compute_matrix:
+    input: 
+        bw = expand("outputs/deeptools/{ribo}.bw", ribo = RIBO),
+        bed = 'inputs/pervasive_transcripts/snoRNA.sorted.bed'
+    output: 
+        matgz = "outputs/deeptools/matrix.mat.gz",
+        mat = "outputs/deeptools/matrix.tab"
+    conda: "deeptools.yml"
+    shell:"""
+    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o {output.matgz} --outFileNameMatrix {output.mat}
+    """
+
+rule plot_heatmap:
+    input: "outputs/deeptools/matrix.mat.gz"
+    output: "outputs/figures/snoRNA_heatmap.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotHeatmap -m {input} --whatToShow "heatmap and colorbar" --dpi 700 --heatmapWidth 10 -out {output}
+    """
+
+rule plot_profile:
+    input: "outputs/deeptools/matrix.mat.gz"
+    output: "outputs/figures/snoRNA_profile.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotProfile -m {input} --perGroup -out {output}
+    """
+
+rule plot_profile_summary:
+    input: mat = "outputs/deeptools/matrix.tab"
+    output: plt = "outputs/figures/snoRNA_profile_summary.pdf"
+    #conda:
+    script: "Scripts/snoRNA_metagene_summary.R"

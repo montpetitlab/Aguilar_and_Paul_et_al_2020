@@ -36,7 +36,7 @@ dds_counts <- separate(data = dds_counts, col = transcript,
 dds_counts$class <- ifelse(grepl(pattern = "mRNA", x = dds_counts$class),
                                 "mRNA", dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "NME1", x = dds_counts$class),
-                           "mRNA", dds_counts$class)
+                           "snoRNA", dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "ST", x = dds_counts$class),
                            "pervasive", dds_counts$class)
 snRNA <- c("LSR1", "snR14", "snR7-L", "snR7-S", "snR6", "snR19")
@@ -45,6 +45,9 @@ dds_counts$class <- ifelse(grepl(pattern = "sn", x = dds_counts$class),
                            "snoRNA", "snRNA"), dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "LSR1", x = dds_counts$class),
                            "snRNA", dds_counts$class)
+rRNA <- c("ETS2-1", "RDN37-1", "RDN25-1", "ITS2-1", "RDN58-1", "ITS1-1", 
+          "RDN18-1", "ETS1-1", "RDN5-1", "RDN5-2")
+dds_counts$class <- ifelse(dds_counts$class %in% rRNA, "rRNA", dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "[FR]-", x = dds_counts$class),
                            "pervasive", dds_counts$class)
 dds_counts$class <- ifelse(grepl(pattern = "NUT", x = dds_counts$class),
@@ -83,7 +86,9 @@ ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class))
   theme_classic() +
   labs(y = "fraction of reads mapped (ribo -)", x = "") +
   coord_flip() +
-  scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", snoRNA = "#FF8C00", snRNA = "#000000")) 
+  scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", 
+                               snoRNA = "#FF8C00", snRNA = "#000000",
+                               rRNA = "#4B0082")) 
 dev.off()
 
   
