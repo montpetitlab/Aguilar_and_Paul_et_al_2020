@@ -14,7 +14,8 @@ rule all:
         "outputs/deseq2/res_enp1_sig.csv",
         "outputs/figures/uts.pdf",
         "outputs/figures/snoRNA_profile.png",
-        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
+        "outputs/figures/snoRNA_profile_summary.pdf"
 
 ##################################
 ## PREPROCESSING
@@ -108,7 +109,7 @@ rule salmon:
 
 rule multiqc:
     output: 'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
-    input: expand('outputs/quant/{sample}_quant/quant.sf', sample = SAMPLE)
+    input: expand('outputs/quant/{sample}_quant/quant.sf', sample = SAMPLES)
     params: 
         indir = "outputs/quant/",
         outdir = "outputs/quant_multiqc"
@@ -203,14 +204,22 @@ rule bam_coverage:
     bamCoverage -b {input.bam} -o {output} --normalizeUsing RPKM
     """
 
+rule download_snoRNA_bed:
+    output: "inputs/pervasive_transcripts/snoRNA.sorted.bed"
+    shell:'''
+    wget -O {output} https://osf.io/9n4fu/download
+    '''
+
 rule compute_matrix:
     input: 
         bw = expand("outputs/deeptools/{sample}.bw", sample = SAMPLES),
         bed = 'inputs/pervasive_transcripts/snoRNA.sorted.bed'
-    output: "outputs/deeptools/matrix.mat.gz"
+    output: 
+        matgz = "outputs/deeptools/matrix.mat.gz",
+        mat = "outputs/deeptools/matrix.tab"
     conda: "deeptools.yml"
     shell:"""
-    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o {output}
+    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros --outFileNameMatrix {output.mat} -o {output.matgz}
     """
 
 rule plot:
@@ -220,3 +229,9 @@ rule plot:
     shell:"""
     plotProfile -m {input} --perGroup -out {output}
     """
+
+rule plot_profile_summary:
+    input: mat = "outputs/deeptools/matrix.tab"
+    output: plt = "outputs/figures/snoRNA_profile_summary.pdf"
+    #conda:
+    script: "Scripts/snoRNA_metagene_summary.R"
