@@ -29,6 +29,8 @@ rule all:
         "outputs/diffex_figures/perc_map_ribo.pdf",
         "outputs/diffex_figures/transcript_accumulation.pdf",
         "outputs/diffex_figures/rna_classes.pdf",
+        "outputs/diffex_figures/heatmap_log2fc.pdf",
+        "outputs/diffex_figures/density_log2fc.pdf", 
         # quant
         'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
         # metagene
@@ -209,6 +211,18 @@ rule plot_rna_classes:
         rrp6 = "outputs/deseq2/res_rrp6.csv", 
         srm1 = "outputs/deseq2/res_srm1.csv"
     script: "Scripts/rna_class_plot.R"
+
+rule plot_log2fc_heatmap:
+    output:
+        heatmap = "outputs/diffex_figures/heatmap_log2fc.pdf",
+        density = "outputs/diffex_figures/density_log2fc.pdf" 
+    input:
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    script: "Scripts/heatmap_log2fc.R"
 
 #####################################
 ## DEEPTOOLS

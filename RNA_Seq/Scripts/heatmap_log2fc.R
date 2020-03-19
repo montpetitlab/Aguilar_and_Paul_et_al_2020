@@ -4,13 +4,12 @@ library(readr)
 library(purrr)
 library(tidyr)
 library(RColorBrewer)
+library(ggplot2)
 
 # heatmap -----------------------------------------------------------------
 
-samples <- read_csv("inputs/ribo-samples.csv")
-files <- files <- list.files("outputs/deseq2", ".csv$", full.names = T)
-files <- files[!grepl(pattern = "*sig*", x = files)]
-res <- files %>%
+files <- unlist(snakemake@input)
+res <- files[1:5] %>%
   purrr::set_names() %>% 
   map_dfr(read_csv, .id = "source") %>%
   mutate(source = gsub("outputs\\/deseq2\\/", "", source)) %>%
@@ -43,29 +42,8 @@ pal <- brewer.pal(9, "Set1")
 mat_colors <- list(transcript = pal[c(2, 9)])
 names(mat_colors$transcript) <- unique(mat_row$transcript)
 
-pdf(snakemake@output[["plot"]], width = 6, height = 6)
-# option 1: reduce number of color breaks
-pheatmap(mat                  = res_wide,
-         show_rownames        = F,
-         show_colnames        = T,
-         cluster_rows         = T,
-         cluster_cols         = T,
-         annotation_row       = mat_row,
-         annotation_colors    = mat_colors,
-         annotation_names_row = F,
-         color                = colorRampPalette(rev(brewer.pal(n = 7, name = "RdYlBu")))(7))
-# option 2: center and scaling of log2FC values per column
-pheatmap(mat                  = res_wide,
-         show_rownames        = F,
-         show_colnames        = T,
-         cluster_rows         = T,
-         cluster_cols         = T,
-         annotation_row       = mat_row,
-         annotation_colors    = mat_colors,
-         annotation_names_row = F,
-         scale                = "column")
-
-# option 3: reset values to a min and max; needs to be paired with a heatmap
+pdf(snakemake@output[["heatmap"]], width = 6, height = 6)
+# reset values to a min and max; needs to be paired with a heatmap
 # volcano plot like seen below
 tmp <- ifelse(res_wide > 7, 7, res_wide)
 tmp <- ifelse(tmp < -7, -7, tmp)
@@ -88,6 +66,7 @@ res_long <- pivot_longer(res_wide2, cols = -transcripts,
                          names_to = "sample", values_to = "log2FC")
 res_long <- left_join(res_long, mat_row2)
 
+pdf(snakemake@output[['density']], height = 5, width = 8)
 ggplot(res_long, aes(x = log2FC, fill = transcript, color = transcript)) +
   geom_density(alpha = .7) +
   theme_minimal() +
@@ -97,3 +76,4 @@ ggplot(res_long, aes(x = log2FC, fill = transcript, color = transcript)) +
   scale_color_manual(values = c(pervasive_transcript = "#377EB8",
                                mRNA = "#999999")) +
   theme(legend.position = "bottom")
+dev.off()
