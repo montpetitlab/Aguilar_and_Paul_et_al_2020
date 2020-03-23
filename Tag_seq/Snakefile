@@ -15,7 +15,8 @@ rule all:
         "outputs/figures/uts.pdf",
         "outputs/figures/snoRNA_profile.png",
         'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
-        "outputs/figures/snoRNA_profile_summary.pdf"
+        "outputs/figures/snoRNA_profile_summary.pdf",
+        "outputs/figures/rna_classes.pdf"
 
 ##################################
 ## PREPROCESSING
@@ -153,6 +154,27 @@ rule plot_uts:
         "outputs/deseq2/res_enp1.csv"
     conda: "plot.yml"
     script: "scripts/plot_uts.R"
+
+rule download_rna_classes:
+    '''
+    Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
+    DOI: https://doi.org/10.1016/j.cell.2013.07.047
+    '''
+    output: "inputs/rna_classes.csv" 
+    shell:'''
+    wget -O {output} https://osf.io/gqnwh/download
+    '''
+
+rule plot_rna_classes:
+    output: 
+        rna_plt_all = "outputs/figures/rna_classes.pdf",
+        rna_plt_1_10 = "outputs/figures/rna_classes_1_10.pdf"
+    input:
+        rna = "inputs/rna_classes.csv", 
+        csl4 = "outputs/deseq2/res_csl4.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        wt = "outputs/deseq2/res_wt.csv"
+    script: "scripts/rna_class_plots.R"
 
 #####################################
 ## DEEPTOOLS
