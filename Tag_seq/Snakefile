@@ -9,14 +9,15 @@ SAMPLES =['BM_WT_pBM5_1_S29', 'BM_WT_pBM5_2_S30', 'BM_WT_pBM5_3_S31',
 
 rule all:
     input:
-        "outputs/deseq2/res_wt_sig.csv",
-        "outputs/deseq2/res_csl4_sig.csv",
-        "outputs/deseq2/res_enp1_sig.csv",
         "outputs/figures/uts.pdf",
+        "outputs/figures/uts_upset.pdf",
+        "outputs/figures/uts_v_wt.pdf",
         "outputs/figures/snoRNA_profile.png",
         'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
         "outputs/figures/snoRNA_profile_summary.pdf",
-        "outputs/figures/rna_classes.pdf"
+        "outputs/figures/rna_classes.pdf",
+        "outputs/figures/rna_classes_v_wt.pdf",
+        "outputs/figures/rna_classes_1_10_v_wt.pdf"
 
 ##################################
 ## PREPROCESSING
@@ -136,24 +137,47 @@ rule deseq2:
         wt = "outputs/deseq2/res_wt.csv",
         csl4 = "outputs/deseq2/res_csl4.csv",
         enp1 = "outputs/deseq2/res_enp1.csv",
-        wt_sig = "outputs/deseq2/res_wt_sig.csv",
-        csl4_sig = "outputs/deseq2/res_csl4_sig.csv",
-        enp1_sig = "outputs/deseq2/res_enp1_sig.csv"
+        csl4_bm766 = "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+        csl4_bm5 = "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+        enp1_bm766 ="outputs/deseq2/res_enp1_bm766_v_wt.csv",
+        enp1_bm5 = "outputs/deseq2/res_enp1_bm5_v_wt.csv",
     input: 
          counts = "outputs/counts/tag_seq_counts.csv",
          samples = "inputs/samples.csv"
     #conda: "diffex.yml"
     script: "scripts/deseq2.R"
 
-rule plot_uts:
+rule plot_uts_mutants:
     output: 
-        fig = "outputs/figures/uts.pdf"
+        fig = "outputs/figures/uts.pdf",
     input:
         "outputs/deseq2/res_wt.csv",
         "outputs/deseq2/res_csl4.csv",
         "outputs/deseq2/res_enp1.csv"
     conda: "plot.yml"
     script: "scripts/plot_uts.R"
+
+rule plot_uts_upset_mutants:
+    output: 
+        upset = "outputs/figures/uts_upset.pdf"
+    input:
+        "outputs/deseq2/res_wt.csv",
+        "outputs/deseq2/res_csl4.csv",
+        "outputs/deseq2/res_enp1.csv"
+    conda: "plot.yml"
+    script: "scripts/plot_uts_upset.R"
+
+rule plot_uts_v_wt:
+    output: 
+        fig = "outputs/figures/uts_v_wt.pdf"
+    input:
+        "outputs/deseq2/res_wt.csv",
+        "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+        "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+        "outputs/deseq2/res_enp1_bm766_v_wt.csv",
+        "outputs/deseq2/res_enp1_bm5_v_wt.csv"
+    conda: "plot.yml"
+    script: "scripts/plot_uts_v_wt.R"
 
 rule download_rna_classes:
     '''
@@ -175,6 +199,19 @@ rule plot_rna_classes:
         enp1 = "outputs/deseq2/res_enp1.csv", 
         wt = "outputs/deseq2/res_wt.csv"
     script: "scripts/rna_class_plots.R"
+
+rule plot_rna_classes_v_wt:
+    output: 
+        rna_plt_all = "outputs/figures/rna_classes_v_wt.pdf",
+        rna_plt_1_10 = "outputs/figures/rna_classes_1_10_v_wt.pdf"
+    input:
+        rna = "inputs/rna_classes.csv", 
+        csl4_bm766 = "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+        csl4_bm5 = "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+        enp1_bm766 ="outputs/deseq2/res_enp1_bm766_v_wt.csv",
+        enp1_bm5 = "outputs/deseq2/res_enp1_bm5_v_wt.csv",
+        wt = "outputs/deseq2/res_wt.csv",
+    script: "scripts/rna_class_plots_v_wt.R"
 
 #####################################
 ## DEEPTOOLS
