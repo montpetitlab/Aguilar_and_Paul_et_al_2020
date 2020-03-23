@@ -57,7 +57,7 @@ dds_counts$class <- ifelse(grepl(pattern = "CUT", x = dds_counts$class),
 
 # transform to long 
 dds_counts_long <- dds_counts %>%
-  select(-transcript, -coord) %>%
+  dplyr::select(-transcript, -coord) %>%
   pivot_longer(names_to = "sample", values_to = "norm_count", -class)
 
 # collapse to group
