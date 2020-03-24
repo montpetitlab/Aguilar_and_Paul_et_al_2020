@@ -13,8 +13,10 @@ rule all:
     input:
         'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
         "outputs/figures/perc_map_oligo.pdf", 
+        "outputs/figures/perc_map_oligo_zoom.pdf",
         "outputs/figures/snoRNA_heatmap.png",
-        "outputs/figures/snoRNA_profile_summary.pdf"
+        "outputs/figures/snoRNA_profile_summary.pdf",
+        "outputs/figures/rna_classes.pdf",
 
 
 ##################################
@@ -121,31 +123,46 @@ rule multiqc:
 ## DIFFERENTIAL EXPRESSION
 #####################################
 
-#rule deseq2:
-#    output:
-#        csl4ph = "outputs/deseq2/res_csl4ph.csv",
-#        csl4ph_sig = "outputs/deseq2/res_csl4ph_sig.csv",
-#        enp1 = "outputs/deseq2/res_enp1.csv", 
-#        enp1_sig =  "outputs/deseq2/res_enp1_sig.csv", 
-  #      dis3 =  "outputs/deseq2/res_dis3.csv", 
-  #      dis3_sig =  "outputs/deseq2/res_dis3_sig.csv", 
-  #      rrp6 = "outputs/deseq2/res_rrp6.csv", 
-  #      rrp6_sig = "outputs/deseq2/res_rrp6_sig.csv", 
-  #      srm1 = "outputs/deseq2/res_srm1.csv", 
-  #      srm1_sig = "outputs/deseq2/res_srm1_sig.csv", 
-  #  input: 
-  #      expand("outputs/quant/{oligo}_quant/quant.sf", oligo = OLIGO),
-  #      samples = "inputs/oligo-samples.csv"
+rule deseq2:
+    output:
+        csl4 = "outputs/deseq2/res_csl4.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv", 
+    input: 
+        expand("outputs/quant/{oligo}_quant/quant.sf", oligo = OLIGO),
+        samples = "inputs/oligo-samples.csv"
     #conda: "diffex.yml" 
-  #  script: "Scripts/deseq2.R"
+    script: "scripts/deseq2.R"
 
 rule perc_map_oligo:
-    output: perc_map_oligo = "outputs/figures/perc_map_oligo.pdf"
+    output:
+        perc_map_oligo = "outputs/figures/perc_map_oligo.pdf",
+        perc_map_oligo_zoom = "outputs/figures/perc_map_oligo_zoom.pdf"
     input: 
         expand("outputs/quant/{oligo}_quant/quant.sf", oligo = OLIGO),
         samples = "inputs/oligo-samples.csv"
    #conda: "diffex.yml" 
     script: "scripts/perc_map_oligodt.R"
+
+rule download_rna_classes:
+    '''
+    Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
+    DOI: https://doi.org/10.1016/j.cell.2013.07.047
+    '''
+    output: "inputs/rna_classes.csv" 
+    shell:'''
+    wget -O {output} https://osf.io/gqnwh/download
+    '''
+
+rule plot_rna_classes:
+    output: 
+        rna_plt_all = "outputs/figures/rna_classes.pdf",
+    input:
+        rna = "inputs/rna_classes.csv", 
+        csl4 = "outputs/deseq2/res_csl4.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv", 
+    script: "scripts/rna_class_plots.R"
 
 #####################################
 ## DEEPTOOLS

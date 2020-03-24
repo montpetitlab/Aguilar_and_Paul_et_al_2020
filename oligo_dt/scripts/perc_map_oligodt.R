@@ -5,7 +5,6 @@ library(DESeq2)
 library(tidyr)
 library(ggplot2)
 library(dplyr)
-
 ## Read in metadata and counts
 samples <- read_csv(snakemake@input[['samples']])
 # samples <- read_csv("inputs/oligo-samples.csv")
@@ -72,7 +71,7 @@ dds_counts_long_summarized <- dds_counts_long %>%
 # count the total number of reads quantified
 dds_counts_sample <- dds_counts_long %>%
   group_by(group) %>%
-  summarize(sum_sample = sum(norm_count))
+  dplyr::summarize(sum_sample = sum(norm_count))
 
 # join counts together
 dds_counts_summarized <- left_join(dds_counts_long_summarized, dds_counts_sample)
@@ -80,6 +79,7 @@ dds_counts_summarized <- left_join(dds_counts_long_summarized, dds_counts_sample
 # calculate percent mapping
 dds_counts_summarized$percent_mapping <- dds_counts_summarized$sum_class / dds_counts_summarized$sum_sample
 
+dds_counts_summarized$group <- factor(dds_counts_summarized$group, levels = c("srm1", "enp1", "csl4ph", "ctrl"))
 
 pdf(snakemake@output[["perc_map_oligo"]], height = 5, width = 7)
 ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class)) +
@@ -89,4 +89,16 @@ ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class))
   coord_flip() +
   scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", 
                                snoRNA = "#FF8C00", snRNA = "#000000", rRNA = "#4B0082")) 
+dev.off()
+
+pdf(snakemake@output[["perc_map_oligo_zoom"]], height = 5, width = 7)
+ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  labs(y = "fraction of reads mapped (oligo-dt)", x = "") +
+  coord_flip(ylim = c(0, .235)) +
+  scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", 
+                               snoRNA = "#FF8C00", snRNA = "#000000",
+                               rRNA = "#4B0082")) +
+  theme(legend.position="none")
 dev.off()
