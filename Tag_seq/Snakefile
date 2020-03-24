@@ -1,0 +1,318 @@
+
+SAMPLES =['BM_WT_pBM5_1_S29', 'BM_WT_pBM5_2_S30', 'BM_WT_pBM5_3_S31',
+          'BM_WT_pBM766_1_S32','BM_WT_pBM766_2_S33','BM_WT_pBM766_3_S34',
+          'BM_csl4ph_pBM5_1_S35','BM_csl4ph_pBM5_2_S36','BM_csl4ph_pBM5_3_S37',
+          'BM_csl4ph_pBM766_1_S38','BM_csl4ph_pBM766_2_S39','BM_csl4ph_pBM766_3_S40',
+          'BM_enp1_1_pBM5_1_S41','BM_enp1_1_pBM5_2_S42','BM_enp1_1_pBM5_3_S43',
+          'BM_enp1_1_pBM766_1_S44','BM_enp1_1_pBM766_2_S45','BM_enp1_1_pBM766_3_S46']
+
+
+rule all:
+    input:
+        "outputs/figures/uts_accumulation_v_wt.pdf",
+        #"outputs/figures/uts.pdf",
+        #"outputs/figures/uts_upset.pdf",
+        #"outputs/figures/uts_v_wt.pdf",
+        "outputs/figures/rna_classes_v_wt.pdf",
+        "outputs/figures/rna_classes_I_corr_v_wt.pdf",
+        "outputs/figures/rna_classes_I_accum_v_wt.pdf",
+        "outputs/figures/rna_classes_X_accum_v_wt.pdf", 
+        "outputs/figures/rna_classes_I-III_accum_v_wt.pdf",
+        #"outputs/figures/rna_classes_1_10_v_wt.pdf",
+        #"outputs/figures/rna_classes.pdf",
+        "outputs/figures/snoRNA_profile.png",
+        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
+        "outputs/figures/snoRNA_profile_summary.pdf",
+
+##################################
+## PREPROCESSING
+##################################
+
+rule first_12_qc:
+    output: 'outputs/quality/{sample}.trim.fq.gz'
+    input: 'inputs/raw/{sample}_L002_R1_001.fastq.gz'
+    conda: 'preprocessing.yml'
+    shell:''' 
+    trimmomatic SE {input} {output} LEADING:12
+    '''
+    
+rule bbduk_qc:
+    output: 'outputs/quality/{sample}.trimbb.fq.gz'
+    input:
+        fq = 'outputs/quality/{sample}.trim.fq.gz',
+        polyA = 'inputs/polyA.fa.gz',
+        truseqr = 'inputs/truseq_rna.fa.gz',
+        truseq = 'inputs/truseq.fa.gz'
+    conda: 'preprocessing.yml'
+    shell:'''
+    bbduk.sh in={input.fq} out={output} ref={input.polyA},{input.truseq} k=13 ktrim=r useshortkmers=t mink=5 qtrim=r trimq=10 minlength=20
+    '''
+
+##################################
+## GENERATE TRANSCRIPT REFERENCE
+##################################
+
+# To characterize the expression of pervasive transcripts, 
+# we need to use a transcriptome that contains these transcripts.
+# We can generate this reference by extracting genomic segments
+# that are annotated in SGD as pervasive transcripts. These 
+# annotations were compiled by Ellision et al (DOI: 10.1534/genetics.119.302262)
+# We download these annotations as bed files below, and then
+# use these bedfiles to extract pervasive transcripts and ORFs
+# from the genome.
+# The original annotations are available at 
+# https://github.com/mae92/Paf1C-Transcriptome-Analysis-Code
+# however, because github is non-archival, we have transfered
+# these files to OSF, and download them from there. 
+
+# We use sacCer3 from UCSC, originally obtained from the 
+# following ftp link:
+#
+# In this folder structure, the genome is saved as "genome.fa".
+# We have renamed it to sacCer3.fa to reflect its contents.
+# We have also uploaded this to OSF, and use that link for
+# downloading the file below. 
+
+rule download_transcript_bedfile:
+    output: 'inputs/pervasive_transcripts/all_transcripts.bed'
+    shell:"wget -O {output} https://osf.io/ynh6z/download"
+
+rule download_sacCer3:
+    output: "inputs/genome/sacCer3.fa"
+    shell:"wget -O {output} https://osf.io/r5cj6/download"
+
+rule create_transcripts:
+    output: "inputs/genome/sacCer3_transcripts.fa"
+    input: 
+        bed = 'inputs/pervasive_transcripts/all_transcripts.bed',
+        genome = "inputs/genome/sacCer3.fa"
+    conda: "bedtools.yml"
+    shell:'''
+    bedtools getfasta -fi {input.genome} -bed {input.bed} -name > {output}  
+    '''
+
+##################################
+## QUANTIFICATION
+##################################
+
+rule index_transcriptome:
+    output: directory('inputs/genome/sacCer3_transcripts_index')
+    input: "inputs/genome/sacCer3_transcripts.fa"
+    conda: 'salmon.yml'
+    shell:'''
+    salmon index -t {input} -i {output}
+    '''
+
+rule salmon:
+    output: 'outputs/quant/{sample}_quant/quant.sf',
+    input:
+        fq = 'outputs/quality/{sample}.trimbb.fq.gz',
+        indx = directory('inputs/genome/sacCer3_transcripts_index')
+    conda: 'salmon.yml'
+    params: outdir = "outputs/quant/{sample}_quant/"
+    shell:'''
+    salmon quant -i {input.indx} -l A -r {input.fq} -o {params.outdir} --validateMappings
+    '''
+
+rule multiqc:
+    output: 'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+    input: expand('outputs/quant/{sample}_quant/quant.sf', sample = SAMPLES)
+    params: 
+        indir = "outputs/quant/",
+        outdir = "outputs/quant_multiqc"
+    conda: "multiqc.yml"
+    shell:''' 
+    multiqc -o {params.outdir} {params.indir} -f
+    '''
+
+#####################################
+## DIFFERENTIAL EXPRESSION
+#####################################
+
+rule make_counts:
+    output: counts = "outputs/counts/tag_seq_counts.csv"
+    input: 
+        expand("outputs/quant/{sample}_quant/quant.sf", sample = SAMPLES),
+        samples = "inputs/samples.csv"
+    conda: "diffex.yml" 
+    script: "scripts/make_counts.R"
+
+rule deseq2:
+    output:
+        wt = "outputs/deseq2/res_wt.csv",
+        csl4 = "outputs/deseq2/res_csl4.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv",
+        wt_bm766 = "outputs/deseq2/res_wt_bm766_v_wt.csv",
+        csl4_bm766 = "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+        csl4_bm5 = "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+        enp1_bm766 ="outputs/deseq2/res_enp1_bm766_v_wt.csv",
+        enp1_bm5 = "outputs/deseq2/res_enp1_bm5_v_wt.csv",
+    input: 
+         counts = "outputs/counts/tag_seq_counts.csv",
+         samples = "inputs/samples.csv"
+    #conda: "diffex.yml"
+    script: "scripts/deseq2.R"
+
+#rule plot_uts_mutants:
+#    output: 
+#        fig = "outputs/figures/uts.pdf",
+#    input:
+#        "outputs/deseq2/res_wt.csv",
+#        "outputs/deseq2/res_csl4.csv",
+#        "outputs/deseq2/res_enp1.csv"
+#    conda: "plot.yml"
+#    script: "scripts/plot_uts.R"
+
+#rule plot_uts_upset_mutants:
+#    output: 
+#        upset = "outputs/figures/uts_upset.pdf"
+#    input:
+#        "outputs/deseq2/res_wt.csv",
+#        "outputs/deseq2/res_csl4.csv",
+#        "outputs/deseq2/res_enp1.csv"
+#    conda: "plot.yml"
+#    script: "scripts/plot_uts_upset.R"
+
+#rule plot_uts_v_wt:
+#    output: 
+#        fig = "outputs/figures/uts_v_wt.pdf"
+#    input:
+#        "outputs/deseq2/res_wt_bm766_v_wt.csv",
+#        "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+#        "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+#        "outputs/deseq2/res_enp1_bm766_v_wt.csv",
+#        "outputs/deseq2/res_enp1_bm5_v_wt.csv"
+#    conda: "plot.yml"
+#    script: "scripts/plot_uts_v_wt.R"
+
+rule plot_uts_accumulation_v_wt:
+    output: 
+        fig = "outputs/figures/uts_accumulation_v_wt.pdf"
+    input:
+        "outputs/deseq2/res_wt_bm766_v_wt.csv",
+        "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+        "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+        "outputs/deseq2/res_enp1_bm766_v_wt.csv",
+        "outputs/deseq2/res_enp1_bm5_v_wt.csv"
+    conda: "plot.yml"
+    script: "scripts/transcript_accumulation_uts_v_wt.R"
+
+
+rule download_rna_classes:
+    '''
+    Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
+    DOI: https://doi.org/10.1016/j.cell.2013.07.047
+    '''
+    output: "inputs/rna_classes.csv" 
+    shell:'''
+    wget -O {output} https://osf.io/gqnwh/download
+    '''
+
+#rule plot_rna_classes:
+#    output: 
+#        rna_plt_all = "outputs/figures/rna_classes.pdf",
+#        rna_plt_1_10 = "outputs/figures/rna_classes_1_10.pdf"
+#    input:
+#        rna = "inputs/rna_classes.csv", 
+#        csl4 = "outputs/deseq2/res_csl4.csv",
+#        enp1 = "outputs/deseq2/res_enp1.csv", 
+#        wt = "outputs/deseq2/res_wt.csv"
+#    script: "scripts/rna_class_plots.R"
+
+rule plot_rna_classes_v_wt:
+    output: 
+        rna_plt_all = "outputs/figures/rna_classes_v_wt.pdf",
+        corr = "outputs/figures/rna_classes_I_corr_v_wt.pdf",
+        rna_I_accum = "outputs/figures/rna_classes_I_accum_v_wt.pdf",
+        rna_X_accum = "outputs/figures/rna_classes_X_accum_v_wt.pdf",
+        rna_III_accum = "outputs/figures/rna_classes_I-III_accum_v_wt.pdf"
+    input:
+        rna = "inputs/rna_classes.csv", 
+        csl4_bm766 = "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
+        csl4_bm5 = "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+        enp1_bm766 ="outputs/deseq2/res_enp1_bm766_v_wt.csv",
+        enp1_bm5 = "outputs/deseq2/res_enp1_bm5_v_wt.csv",
+        wt_bm766 = "outputs/deseq2/res_wt_bm766_v_wt.csv",
+    script: "scripts/rna_class_plots_v_wt.R"
+
+#####################################
+## DEEPTOOLS
+#####################################
+
+rule hisat2_build:
+    input: "inputs/genome/sacCer3.fa"
+    output: "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2-build {input} inputs/genome/sacCer3_hisat/sacCer3_hisat
+    """
+
+rule hisat2_align:
+    input:
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2",
+        reads = 'outputs/quality/{sample}.trimbb.fq.gz',
+    output: "outputs/hisat/{sample}.bam"
+    params: 
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2 -p 4 -x {params.indx} -U {input.reads} | samtools view -Sb > {output}
+    """
+
+rule sort_bam:
+    input: "outputs/hisat/{sample}.bam"
+    output: "outputs/hisat/{sample}.sort.bam"
+    conda: "hisat.yml"
+    shell:'''
+    samtools sort {input} > {output}
+    '''
+ 
+rule index_bam:
+    input: "outputs/hisat/{sample}.sort.bam"
+    output: "outputs/hisat/{sample}.sort.bam.bai"
+    conda: "hisat.yml"
+    shell:"""
+    samtools index {input}    
+    """
+
+rule bam_coverage:
+    input: 
+        bam = "outputs/hisat/{sample}.sort.bam",
+        indx = "outputs/hisat/{sample}.sort.bam.bai"
+    output: "outputs/deeptools/{sample}.bw"
+    conda: "deeptools.yml"
+    shell:"""
+    bamCoverage -b {input.bam} -o {output} --normalizeUsing RPKM
+    """
+
+rule download_snoRNA_bed:
+    output: "inputs/pervasive_transcripts/snoRNA.sorted.bed"
+    shell:'''
+    wget -O {output} https://osf.io/9n4fu/download
+    '''
+
+rule compute_matrix:
+    input: 
+        bw = expand("outputs/deeptools/{sample}.bw", sample = SAMPLES),
+        bed = 'inputs/pervasive_transcripts/snoRNA.sorted.bed'
+    output: 
+        matgz = "outputs/deeptools/matrix.mat.gz",
+        mat = "outputs/deeptools/matrix.tab"
+    conda: "deeptools.yml"
+    shell:"""
+    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros --outFileNameMatrix {output.mat} -o {output.matgz}
+    """
+
+rule plot:
+    input: "outputs/deeptools/matrix.mat.gz"
+    output: "outputs/figures/snoRNA_profile.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotProfile -m {input} --perGroup -out {output}
+    """
+
+rule plot_profile_summary:
+    input: mat = "outputs/deeptools/matrix.tab"
+    output: plt = "outputs/figures/snoRNA_profile_summary.pdf"
+    #conda:
+    script: "Scripts/snoRNA_metagene_summary.R"

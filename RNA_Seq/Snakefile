@@ -1,0 +1,319 @@
+RIBO = ['HI.3202.005.Index_20.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d1',
+        'HI.3202.005.Index_21.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d2',
+        'HI.3202.005.Index_22.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d3',
+        'HI.4535.001.Index_13.CA_Dis3-1-4',
+        'HI.4535.001.Index_7.CA_Dis3-1-3',
+        'HI.3758.002.Index_14.BM-MO_dpl-enp1-37C-90-4-1',
+        'HI.3758.002.Index_15.BM-MO_dpl-enp1-37C-90-4-2',
+        'HI.4535.001.Index_16.CA_Rrp6-delta-5',
+        'HI.4535.001.Index_18.CA_Rrp6-delta-6',
+        'HI.3758.004.Index_25.BM-MO_dpl-srm1-37C-90-8-1',
+        'HI.3758.004.Index_27.BM-MO_dpl-srm1-37C-90-8-2',
+        'HI.4535.001.Index_2.CA_WT-1',
+        'HI.4535.001.Index_4.CA_WT-2']
+
+rule all:
+    input:
+        # Differential expression
+        "outputs/deseq2/res_csl4ph.csv",
+        "outputs/deseq2/res_csl4ph_sig.csv",
+        "outputs/deseq2/res_enp1.csv", 
+        "outputs/deseq2/res_enp1_sig.csv", 
+        "outputs/deseq2/res_dis3.csv", 
+        "outputs/deseq2/res_dis3_sig.csv", 
+        "outputs/deseq2/res_rrp6.csv", 
+        "outputs/deseq2/res_rrp6_sig.csv", 
+        "outputs/deseq2/res_srm1.csv", 
+        "outputs/deseq2/res_srm1_sig.csv", 
+        "outputs/diffex_figures/corr_plot.pdf",
+        "outputs/diffex_figures/perc_map_ribo.pdf",
+        "outputs/diffex_figures/perc_map_ribo_zoom.pdf",
+        "outputs/diffex_figures/transcript_accumulation.pdf",
+        "outputs/diffex_figures/rna_classes.pdf",
+        "outputs/diffex_figures/heatmap_log2fc.pdf",
+        "outputs/diffex_figures/density_log2fc.pdf", 
+        # quant
+        'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt',
+        # metagene
+        "outputs/figures/snoRNA_profile.png",
+        "outputs/figures/snoRNA_heatmap.png",
+        "outputs/figures/snoRNA_profile_summary.pdf"
+
+##################################
+## GENERATE TRANSCRIPT REFERENCE
+##################################
+
+# To characterize the expression of pervasive transcripts, 
+# we need to use a transcriptome that contains these transcripts.
+# We can generate this reference by extracting genomic segments
+# that are annotated in SGD as pervasive transcripts. These 
+# annotations were compiled by Ellision et al (DOI: 10.1534/genetics.119.302262)
+# We download these annotations as bed files below, and then
+# use these bedfiles to extract pervasive transcripts and ORFs
+# from the genome.
+# The original annotations are available at 
+# https://github.com/mae92/Paf1C-Transcriptome-Analysis-Code
+# however, because github is non-archival, we have transfered
+# these files to OSF, and download them from there. 
+
+# We use sacCer3 from UCSC, originally obtained from the 
+# following ftp link:
+#
+# In this folder structure, the genome is saved as "genome.fa".
+# We have renamed it to sacCer3.fa to reflect its contents.
+# We have also uploaded this to OSF, and use that link for
+# downloading the file below. 
+
+rule download_transcript_bedfile:
+    output: 'inputs/pervasive_transcripts/all_transcripts.bed'
+    shell:"wget -O {output} https://osf.io/ynh6z/download"
+
+rule download_sacCer3:
+    output: "inputs/genome/sacCer3.fa"
+    shell:"wget -O {output} https://osf.io/r5cj6/download"
+
+rule create_transcripts:
+    output: "inputs/genome/sacCer3_transcripts.fa"
+    input: 
+        bed = 'inputs/pervasive_transcripts/all_transcripts.bed',
+        genome = "inputs/genome/sacCer3.fa"
+    conda: "bedtools.yml"
+    shell:'''
+    bedtools getfasta -fi {input.genome} -bed {input.bed} -name > {output}  
+    '''
+
+##################################
+## PREPROCESSING
+##################################
+
+rule trim:
+    output:
+        R1 = "outputs/ribo-trim/{ribo}_R1.fastq.gz", 
+        R2 = "outputs/ribo-trim/{ribo}_R2.fastq.gz",
+        O1 = "outputs/ribo-trim/{ribo}_O1.fastq.gz", 
+        O2 = "outputs/ribo-trim/{ribo}_O2.fastq.gz"
+    input:
+        R1 = "inputs/ribo-depleted/{ribo}_R1.fastq.gz", 
+        R2 = "inputs/ribo-depleted/{ribo}_R2.fastq.gz",
+        adapters = "inputs/adapters.fa"
+    conda: "trim.yml"
+    shell:'''
+    trimmomatic PE {input.R1} {input.R2} \
+            {output.R1} {output.O1} \
+            {output.R2} {output.O2} \
+            LEADING:2 TRAILING:2 SLIDINGWINDOW:4:2 \
+            ILLUMINACLIP:{input.adapters}:2:30:10 MINLEN:31
+    '''
+
+##################################
+## QUANTIFICATION
+##################################
+
+rule index_transcriptome:
+    output: directory('inputs/genome/sacCer3_transcripts_index')
+    input: "inputs/genome/sacCer3_transcripts.fa"
+    conda: 'salmon.yml'
+    shell:'''
+    salmon index -t {input} -i {output}
+    '''
+
+rule salmon:
+    output: 'outputs/quant/{ribo}_quant/quant.sf',
+    input:
+        R1 = 'outputs/ribo-trim/{ribo}_R1.fastq.gz',
+        R2 = 'outputs/ribo-trim/{ribo}_R2.fastq.gz',
+        indx = directory('inputs/genome/sacCer3_transcripts_index')
+    conda: 'salmon.yml'
+    params: outdir = "outputs/quant/{ribo}_quant/"
+    shell:'''
+    salmon quant -i {input.indx} -l A -1 {input.R1} -2 {input.R2} -o {params.outdir} --validateMappings
+    '''
+
+rule multiqc:
+    output: 'outputs/quant_multiqc/multiqc_data/multiqc_salmon.txt'
+    input: expand('outputs/quant/{ribo}_quant/quant.sf', ribo = RIBO)
+    params: 
+        indir = "outputs/quant/",
+        outdir = "outputs/quant_multiqc"
+    conda: "multiqc.yml"
+    shell:''' 
+    multiqc -o {params.outdir} {params.indir} -f
+    '''
+#####################################
+## DIFFERENTIAL EXPRESSION
+#####################################
+
+rule deseq2:
+    output:
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        csl4ph_sig = "outputs/deseq2/res_csl4ph_sig.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        enp1_sig =  "outputs/deseq2/res_enp1_sig.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        dis3_sig =  "outputs/deseq2/res_dis3_sig.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        rrp6_sig = "outputs/deseq2/res_rrp6_sig.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv", 
+        srm1_sig = "outputs/deseq2/res_srm1_sig.csv", 
+    input: 
+        expand("outputs/quant/{ribo}_quant/quant.sf", ribo = RIBO),
+        samples = "inputs/ribo-samples.csv"
+    #conda: "diffex.yml" 
+    script: "Scripts/deseq2.R"
+
+rule corr_plot:
+    output: corr_plot = "outputs/diffex_figures/corr_plot.pdf"
+    input: 
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    conda: "corr_plot.yml"
+    script: "Scripts/corr_plot.R"
+
+rule perc_map_ribo:
+    output: 
+        perc_map_ribo = "outputs/diffex_figures/perc_map_ribo.pdf",
+        perc_map_ribo_zoom = "outputs/diffex_figures/perc_map_ribo_zoom.pdf"
+    input: 
+        expand("outputs/quant/{ribo}_quant/quant.sf", ribo = RIBO),
+        samples = "inputs/ribo-samples.csv"
+    #conda: "diffex.yml"
+    script: "Scripts/perc_map_ribo.R"
+
+rule transcript_accumulation:
+    output: accum_plot = "outputs/diffex_figures/transcript_accumulation.pdf"
+    input: 
+        samples = "inputs/ribo-samples.csv",
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    conda: "plot.yml"
+    script: "Scripts/transcript_accumulation.R"
+
+rule download_rna_classes:
+    '''
+    Original source: https://www.cell.com/cms/10.1016/j.cell.2013.07.047/attachment/4a4e7e81-778f-4644-b76f-1018cc5fad77/mmc3.xlsx
+    DOI: https://doi.org/10.1016/j.cell.2013.07.047
+    '''
+    output: "inputs/rna_classes.csv" 
+    shell:'''
+    wget -O {output} https://osf.io/gqnwh/download
+    '''
+
+rule plot_rna_classes:
+    output: rna_plt = "outputs/diffex_figures/rna_classes.pdf"
+    input:
+        rna = "inputs/rna_classes.csv", 
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    script: "Scripts/rna_class_plot.R"
+
+rule plot_log2fc_heatmap:
+    output:
+        heatmap = "outputs/diffex_figures/heatmap_log2fc.pdf",
+        density = "outputs/diffex_figures/density_log2fc.pdf" 
+    input:
+        csl4ph = "outputs/deseq2/res_csl4ph.csv",
+        enp1 = "outputs/deseq2/res_enp1.csv", 
+        dis3 =  "outputs/deseq2/res_dis3.csv", 
+        rrp6 = "outputs/deseq2/res_rrp6.csv", 
+        srm1 = "outputs/deseq2/res_srm1.csv"
+    script: "Scripts/heatmap_log2fc.R"
+
+#####################################
+## DEEPTOOLS
+#####################################
+
+rule hisat2_build:
+    input: "inputs/genome/sacCer3.fa"
+    output: "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2-build {input} inputs/genome/sacCer3_hisat/sacCer3_hisat
+    """
+
+rule hisat2_align:
+    input:
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat.1.ht2",
+        R1 = "outputs/ribo-trim/{ribo}_R1.fastq.gz", 
+        R2 = "outputs/ribo-trim/{ribo}_R2.fastq.gz",
+    output: "outputs/hisat/{ribo}.bam"
+    params: 
+        indx = "inputs/genome/sacCer3_hisat/sacCer3_hisat"
+    conda: "hisat.yml"
+    shell:"""
+    hisat2 -p 4 -x {params.indx} -1 {input.R1} -2 {input.R2} | samtools view -Sb > {output}
+    """
+
+rule sort_bam:
+    input: "outputs/hisat/{ribo}.bam"
+    output: "outputs/hisat/{ribo}.sort.bam"
+    conda: "hisat.yml"
+    shell:'''
+    samtools sort {input} > {output}
+    '''
+ 
+rule index_bam:
+    input: "outputs/hisat/{ribo}.sort.bam"
+    output: "outputs/hisat/{ribo}.sort.bam.bai"
+    conda: "hisat.yml"
+    shell:"""
+    samtools index {input}    
+    """
+
+rule bam_coverage:
+    input: 
+        bam = "outputs/hisat/{ribo}.sort.bam",
+        indx = "outputs/hisat/{ribo}.sort.bam.bai"
+    output: "outputs/deeptools/{ribo}.bw"
+    conda: "deeptools.yml"
+    shell:"""
+    bamCoverage -b {input.bam} -o {output} --normalizeUsing RPKM
+    """
+
+rule download_snoRNA_bed:
+    output: "inputs/pervasive_transcripts/snoRNA.sorted.bed"
+    shell:'''
+    wget -O {output} https://osf.io/9n4fu/download
+    '''
+
+rule compute_matrix:
+    input: 
+        bw = expand("outputs/deeptools/{ribo}.bw", ribo = RIBO),
+        bed = 'inputs/pervasive_transcripts/snoRNA.sorted.bed'
+    output: 
+        matgz = "outputs/deeptools/matrix.mat.gz",
+        mat = "outputs/deeptools/matrix.tab"
+    conda: "deeptools.yml"
+    shell:"""
+    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o {output.matgz} --outFileNameMatrix {output.mat}
+    """
+
+rule plot_heatmap:
+    input: "outputs/deeptools/matrix.mat.gz"
+    output: "outputs/figures/snoRNA_heatmap.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotHeatmap -m {input} --whatToShow "heatmap and colorbar" --dpi 700 --heatmapWidth 10 -out {output}
+    """
+
+rule plot_profile:
+    input: "outputs/deeptools/matrix.mat.gz"
+    output: "outputs/figures/snoRNA_profile.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotProfile -m {input} --perGroup -out {output}
+    """
+
+rule plot_profile_summary:
+    input: mat = "outputs/deeptools/matrix.tab"
+    output: plt = "outputs/figures/snoRNA_profile_summary.pdf"
+    #conda:
+    script: "Scripts/snoRNA_metagene_summary.R"

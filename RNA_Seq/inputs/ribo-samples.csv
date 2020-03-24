@@ -1,0 +1,14 @@
+﻿sample,filename,group
+HI.3202.005.Index_20.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d1,outputs/quant/HI.3202.005.Index_20.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d1_quant/quant.sf,csl4ph
+HI.3202.005.Index_21.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d2,outputs/quant/HI.3202.005.Index_21.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d2_quant/quant.sf,csl4ph
+HI.3202.005.Index_22.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d3,outputs/quant/HI.3202.005.Index_22.BM_shift90-NAB2-PrA-CSL4pH-URA-37C-d3_quant/quant.sf,csl4ph
+HI.3758.002.Index_14.BM-MO_dpl-enp1-37C-90-4-1,outputs/quant/HI.3758.002.Index_14.BM-MO_dpl-enp1-37C-90-4-1_quant/quant.sf,enp1
+HI.3758.002.Index_15.BM-MO_dpl-enp1-37C-90-4-2,outputs/quant/HI.3758.002.Index_15.BM-MO_dpl-enp1-37C-90-4-2_quant/quant.sf,enp1
+HI.3758.004.Index_25.BM-MO_dpl-srm1-37C-90-8-1,outputs/quant/HI.3758.004.Index_25.BM-MO_dpl-srm1-37C-90-8-1_quant/quant.sf,srm1
+HI.3758.004.Index_27.BM-MO_dpl-srm1-37C-90-8-2,outputs/quant/HI.3758.004.Index_27.BM-MO_dpl-srm1-37C-90-8-2_quant/quant.sf,srm1
+HI.4535.001.Index_13.CA_Dis3-1-4,outputs/quant/HI.4535.001.Index_13.CA_Dis3-1-4_quant/quant.sf,dis3
+HI.4535.001.Index_16.CA_Rrp6-delta-5,outputs/quant/HI.4535.001.Index_16.CA_Rrp6-delta-5_quant/quant.sf,rrp6
+HI.4535.001.Index_18.CA_Rrp6-delta-6,outputs/quant/HI.4535.001.Index_18.CA_Rrp6-delta-6_quant/quant.sf,rrp6
+HI.4535.001.Index_2.CA_WT-1,outputs/quant/HI.4535.001.Index_2.CA_WT-1_quant/quant.sf,wt
+HI.4535.001.Index_4.CA_WT-2,outputs/quant/HI.4535.001.Index_4.CA_WT-2_quant/quant.sf,wt
+HI.4535.001.Index_7.CA_Dis3-1-3,outputs/quant/HI.4535.001.Index_7.CA_Dis3-1-3_quant/quant.sf,dis3
