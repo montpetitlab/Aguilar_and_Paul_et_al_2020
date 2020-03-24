@@ -1,13 +1,20 @@
 # RNA class
 library(ggplot2)
 library(readr)
+library(dplyr)
 library(org.Sc.sgd.db)
 library(tidyr)
 library(purrr)
-library(dplyr)
+library(corrplot)      
+library(Hmisc)          
+library(RcmdrMisc)
 
 # read in RNA classes and convert to long format
 rna_class <- read_csv(snakemake@input[['rna']], skip = 1) %>%
+  dplyr::select(I, II, III, IV, V, VI, VII, VIII, IX, X) %>%
+  pivot_longer(cols = I:X, names_to = "class", values_to = "gene")
+
+rna_class <- read_csv("inputs/rna_classes.csv", skip = 1) %>%
   dplyr::select(I, II, III, IV, V, VI, VII, VIII, IX, X) %>%
   pivot_longer(cols = I:X, names_to = "class", values_to = "gene")
 
@@ -51,18 +58,21 @@ rna_class <- rna_class %>%
 
 # read in results of differential expression
 
-files <- c(snakemake@input[['wt']], snakemake@input[['csl4_bm5']],
+files <- c(snakemake@input[['wt_bm766']], snakemake@input[['csl4_bm5']],
            snakemake@input[['csl4_bm766']], snakemake@input[['enp1_bm5']],
            snakemake@input[['enp1_bm766']])
-
+files <- c("outputs/deseq2/res_wt_bm766_v_wt.csv", "outputs/deseq2/res_csl4_bm5_v_wt.csv",
+           "outputs/deseq2/res_csl4_bm766_v_wt.csv", "outputs/deseq2/res_enp1_bm5_v_wt.csv",
+           "outputs/deseq2/res_enp1_bm766_v_wt.csv")
 res <- files %>%
   purrr::set_names() %>% 
   map_dfr(read_csv, .id = "source") %>%
   mutate(source = gsub("outputs\\/deseq2\\/res_", "", source)) %>%
   mutate(source = gsub("_v_wt.csv", "", source)) %>%
-  mutate(source = gsub(".csv", "", source)) %>%
   #filter(padj < .05) %>%
-  dplyr::select(source, X1, log2FoldChange)
+  dplyr::select(source, X1, log2FoldChange, padj) %>%
+  replace_na(list(log2FoldChange = 0))
+
 
 # separate transcript names from coords
 res <- separate(data = res, col = X1, into = c("transcript", "coord"), sep = "::")
@@ -75,21 +85,96 @@ res <- res %>%
 # join with class info
 res <- left_join(res, rna_class, by = c("transcript" = "orf"))
 
+res$sig <- ifelse(res$padj < .05, "sig", "nonsig")
+
+
+# plot all ----------------------------------------------------------------
+
 pdf(snakemake@output[["rna_plt_all"]], height = 7, width = 7)
 ggplot(res, aes(x = class, y = log2FoldChange)) +
   theme_minimal() +
-  geom_boxplot(outlier.size = -1) + 
+  geom_boxplot(outlier.size = -1) +
   facet_wrap(~source) +
   ylim(c(-7, 7))
 dev.off()
 
+# plot accumulation: I -------------------------------------------------------
 
-pdf(snakemake@output[["rna_plt_1_10"]], height = 7, width = 7)
-ggplot(res %>%
-         filter(class %in% c("I", "X")), 
-       aes(x = class, y = log2FoldChange)) +
-  theme_minimal() +
-  geom_boxplot(outlier.size = -1) + 
-  facet_wrap(~source)
-  #ylim(c(-4, 2.5))
+resI <- res %>% 
+  filter(class == "I") %>%
+  group_by(source, class) %>% 
+  arrange(log2FoldChange) %>% 
+  mutate(rn = row_number()) %>%
+  mutate(prop = rn/length(unique(rn)))
+
+
+resI$plasmid <- ifelse(grepl("bm5", resI$source), "bm5", "bm766")
+resI$strain <- ifelse(grepl("wt", resI$source), "wt", NA)
+resI$strain <- ifelse(grepl("enp1", resI$source), "enp1", resI$strain)
+resI$strain <- ifelse(grepl("csl4", resI$source), "csl4", resI$strain)
+
+
+pdf(snakemake@output[["rna_I_accum"]], height = 6, width = 7)
+ggplot(resI) + 
+  geom_line(aes(x=log2FoldChange, y= prop, color=strain, linetype = plasmid), size = 1.1, alpha = .7) +
+  theme_minimal() + 
+  facet_wrap(~class, scales = "free") + 
+  theme(legend.position = "bottom", 
+        strip.background = element_blank(),
+        strip.text.x = element_blank()) +
+  labs(y = "Total Fraction of Transcripts in Class",
+       x = "log2FC (mutant vs. control with bm5)") +
+  scale_color_manual(values = c(csl4 = "#47a4e4", wt = "black", 
+                                enp1 = "#129060"))
+
 dev.off()
+
+
+# plot accumulation: X -------------------------------------------------------
+
+resX <- res %>% 
+  filter(class == "X") %>%
+  group_by(source, class) %>% 
+  arrange(log2FoldChange) %>% 
+  mutate(rn = row_number()) %>%
+  mutate(prop = rn/length(unique(rn)))
+
+
+resX$plasmid <- ifelse(grepl("bm5", resX$source), "bm5", "bm766")
+resX$strain <- ifelse(grepl("wt", resX$source), "wt", NA)
+resX$strain <- ifelse(grepl("enp1", resX$source), "enp1", resX$strain)
+resX$strain <- ifelse(grepl("csl4", resX$source), "csl4", resX$strain)
+
+
+pdf(snakemake@output[["rna_X_accum"]], height = 6, width = 7)
+ggplot(resX) + 
+  geom_line(aes(x=log2FoldChange, y= prop, color=strain, linetype = plasmid), size = 1.1, alpha = .7) +
+  theme_minimal() + 
+  facet_wrap(~class, scales = "free") + 
+  theme(legend.position = "bottom", 
+        strip.background = element_blank(),
+        strip.text.x = element_blank()) +
+  labs(y = "Total Fraction of Transcripts in Class",
+       x = "log2FC (mutant vs. control with bm5)") +
+  scale_color_manual(values = c(csl4 = "#47a4e4", wt = "black", 
+                                enp1 = "#129060"))
+dev.off()
+
+
+# correlation coefficient -------------------------------------------------
+
+res_wide <- res %>%
+  filter(class == "I") %>%
+  dplyr::select(-sig, -padj, -class) %>%
+  pivot_wider(id_cols = c(gene, transcript, coord),
+              names_from = source, values_from = log2FoldChange)
+
+
+correlation <- cor(res_wide %>% 
+                     dplyr::select(wt_bm766, csl4_bm5, csl4_bm766, enp1_bm5, enp1_bm766) %>%
+                     filter(!is.na(wt_bm766)))
+pdf(snakemake@output[['corr']], width = 5, height = 4)
+corrplot(correlation, method = "color", type="upper", addCoef.col = "white")
+dev.off()
+rcorr_pvalues <- rcorr.adjust(as.matrix(res_wide[, c(4:8)]))
+print(rcorr_pvalues)
