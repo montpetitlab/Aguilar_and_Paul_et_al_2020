@@ -29,6 +29,14 @@ ref=~/DATA2/test_tagseq/data/polyA.fa,/home/biplab/DATA2/test_tagseq/data/truseq
 
 done
 ```
+### Convert gtf file to bed file
+```
+awk '{if($3=="transcript")print $1 "\t" $4 "\t" $5 "\t" $10}' new_gtf_file.gtf | sed 's/"//g' | sed 's/;//g'
+```
+### Generating multifasta file for all transcripts, which includes mRNA, snoRNA and pervasive transcripts.
+```
+bedtools getfasta -fi genome.fa -bed all_transcript1.bed -name > all_transcript1.fa
+```
 ### Counting read for features were calculated by Salmon, which use fastq file as input and output count files
 ```
 for i in *trimbb.fastq; do
