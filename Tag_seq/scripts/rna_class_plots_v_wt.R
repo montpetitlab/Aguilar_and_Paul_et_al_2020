@@ -130,6 +130,36 @@ ggplot(resI) +
 dev.off()
 
 
+# plot accumulation: I-III -------------------------------------------------------
+
+resIII <- res %>% 
+  filter(class %in% c("I", "II", "III")) %>%
+  group_by(source) %>% 
+  arrange(log2FoldChange) %>% 
+  mutate(rn = row_number()) %>%
+  mutate(prop = rn/length(unique(rn)))
+
+
+resIII$plasmid <- ifelse(grepl("bm5", resIII$source), "bm5", "bm766")
+resIII$strain <- ifelse(grepl("wt", resIII$source), "wt", NA)
+resIII$strain <- ifelse(grepl("enp1", resIII$source), "enp1", resIII$strain)
+resIII$strain <- ifelse(grepl("csl4", resIII$source), "csl4", resIII$strain)
+
+
+pdf(snakemake@output[["rna_III_accum"]], height = 6, width = 7)
+ggplot(resIII) + 
+  geom_line(aes(x=log2FoldChange, y= prop, color=strain, linetype = plasmid), size = 1.1, alpha = .7) +
+  theme_minimal() + 
+  theme(legend.position = "bottom", 
+        strip.background = element_blank(),
+        strip.text.x = element_blank()) +
+  labs(y = "Total Fraction of Transcripts in Class",
+       x = "log2FC (mutant vs. control with bm5)") +
+  scale_color_manual(values = c(csl4 = "#47a4e4", wt = "black", 
+                                enp1 = "#129060"))
+
+dev.off()
+
 # plot accumulation: X -------------------------------------------------------
 
 resX <- res %>% 

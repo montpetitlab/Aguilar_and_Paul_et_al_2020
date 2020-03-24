@@ -17,6 +17,7 @@ rule all:
         "outputs/figures/rna_classes_I_corr_v_wt.pdf",
         "outputs/figures/rna_classes_I_accum_v_wt.pdf",
         "outputs/figures/rna_classes_X_accum_v_wt.pdf", 
+        "outputs/figures/rna_classes_I-III_accum_v_wt.pdf",
         #"outputs/figures/rna_classes_1_10_v_wt.pdf",
         #"outputs/figures/rna_classes.pdf",
         "outputs/figures/snoRNA_profile.png",
@@ -223,7 +224,8 @@ rule plot_rna_classes_v_wt:
         rna_plt_all = "outputs/figures/rna_classes_v_wt.pdf",
         corr = "outputs/figures/rna_classes_I_corr_v_wt.pdf",
         rna_I_accum = "outputs/figures/rna_classes_I_accum_v_wt.pdf",
-        rna_X_accum = "outputs/figures/rna_classes_X_accum_v_wt.pdf"
+        rna_X_accum = "outputs/figures/rna_classes_X_accum_v_wt.pdf",
+        rna_III_accum = "outputs/figures/rna_classes_I-III_accum_v_wt.pdf"
     input:
         rna = "inputs/rna_classes.csv", 
         csl4_bm766 = "outputs/deseq2/res_csl4_bm766_v_wt.csv", 
