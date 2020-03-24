@@ -91,4 +91,16 @@ ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class))
                                rRNA = "#4B0082")) 
 dev.off()
 
+pdf(snakemake@output[["perc_map_ribo_zoom"]], height = 5, width = 7)
+ggplot(dds_counts_summarized, aes(x = group, y = percent_mapping, fill = class)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  labs(y = "fraction of reads mapped (ribo -)", x = "") +
+  coord_flip(ylim = c(0, .26)) +
+  scale_fill_manual(values = c(mRNA = "#999999", pervasive = "#377EB8", 
+                               snoRNA = "#FF8C00", snRNA = "#000000",
+                               rRNA = "#4B0082")) +
+  theme(legend.position="none")
+dev.off()
+
   

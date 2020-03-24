@@ -27,6 +27,7 @@ rule all:
         "outputs/deseq2/res_srm1_sig.csv", 
         "outputs/diffex_figures/corr_plot.pdf",
         "outputs/diffex_figures/perc_map_ribo.pdf",
+        "outputs/diffex_figures/perc_map_ribo_zoom.pdf",
         "outputs/diffex_figures/transcript_accumulation.pdf",
         "outputs/diffex_figures/rna_classes.pdf",
         "outputs/diffex_figures/heatmap_log2fc.pdf",
@@ -172,7 +173,9 @@ rule corr_plot:
     script: "Scripts/corr_plot.R"
 
 rule perc_map_ribo:
-    output: perc_map_ribo = "outputs/diffex_figures/perc_map_ribo.pdf"
+    output: 
+        perc_map_ribo = "outputs/diffex_figures/perc_map_ribo.pdf",
+        perc_map_ribo_zoom = "outputs/diffex_figures/perc_map_ribo_zoom.pdf"
     input: 
         expand("outputs/quant/{ribo}_quant/quant.sf", ribo = RIBO),
         samples = "inputs/ribo-samples.csv"
