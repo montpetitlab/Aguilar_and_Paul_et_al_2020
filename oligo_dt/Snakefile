@@ -16,7 +16,10 @@ rule all:
         "outputs/figures/perc_map_oligo_zoom.pdf",
         "outputs/figures/snoRNA_heatmap.png",
         "outputs/figures/snoRNA_profile_summary.pdf",
+        "outputs/figures/its1_profile.png",
+        "outputs/figures/its1_heatmap.png",
         "outputs/figures/rna_classes.pdf",
+        expand('outputs/ribo/{oligo}-ribo-R1.fq.gz', oligo = OLIGO)
 
 
 ##################################
@@ -83,6 +86,19 @@ rule trim:
             {output.R2} {output.O2} \
             LEADING:2 TRAILING:2 SLIDINGWINDOW:4:2 \
             ILLUMINACLIP:{input.adapters}:2:30:10 MINLEN:31
+    '''
+
+rule bbduk_find_ribo:
+    output:
+        ribo1='outputs/ribo/{oligo}-ribo-R1.fq.gz',
+        ribo2='outputs/ribo/{oligo}-ribo-R2.fq.gz',
+    input: 
+        R1 = "outputs/oligo-trim/{oligo}_R1.fastq.gz", 
+        R2 = "outputs/oligo-trim/{oligo}_R2.fastq.gz",
+        ribo='inputs/ribokmers.fa.gz'
+    conda: 'bbduk.yml'
+    shell:'''
+    bbduk.sh -Xmx4g in={input.R1} in2={input.R2} outm={output.ribo1} outm2={output.ribo2} k=31 ref={input.ribo}
     '''
 
 ##################################
@@ -254,3 +270,33 @@ rule plot_profile_summary:
     output: plt = "outputs/figures/snoRNA_profile_summary.pdf"
     #conda:
     script: "Scripts/snoRNA_metagene_summary.R"
+
+
+
+rule compute_matrix_its1:
+    input: 
+        bw = expand("outputs/deeptools/{oligo}.bw", oligo = OLIGO),
+        bed = 'inputs/pervasive_transcripts/its1.bed'
+    output: 
+        matgz = "outputs/deeptools_its1/matrix.mat.gz",
+        mat = "outputs/deeptools_its1/matrix.tab"
+    conda: "deeptools.yml"
+    shell:"""
+    computeMatrix scale-regions -S {input.bw} -R {input.bed} --beforeRegionStartLength 200 --afterRegionStartLength 200 --skipZeros -o {output.matgz} --outFileNameMatrix {output.mat}
+    """
+
+rule plot_heatmap_its1:
+    input: "outputs/deeptools_its1/matrix.mat.gz"
+    output: "outputs/figures/its1_heatmap.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotHeatmap -m {input} --whatToShow "heatmap and colorbar" --dpi 700 --heatmapWidth 10 -out {output}
+    """
+
+rule plot_profile_its1:
+    input: "outputs/deeptools_its1/matrix.mat.gz"
+    output: "outputs/figures/its1_profile.png"
+    conda: "deeptools.yml"
+    shell:"""
+    plotProfile -m {input} --perGroup -out {output} --samplesLabel csl4 csl4 csl4 ctrl ctrl ctrl enp1 enp1 srm1 srm1
+    """
