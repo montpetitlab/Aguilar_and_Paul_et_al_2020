@@ -1,6 +1,17 @@
-# Aguilar_and_Paul_et_al_2020
-This github repository contain code for analysis of RNA-Seq and Tag-Seq data which is published as Aguilar and Paul et. al., 2020.
+# Aguilar and Paul et al 2020
+This github repository contain code for analysis of ribo-purified, oligo-dT enriched, and 3' tag-seq rna-sequencing data which is published as Aguilar and Paul et. al., 2020.
 
-## RNA-Seq analysis:
+Each folder contains a snakefile that coordinates preprocessing, analysis, and visualization of each dataset. 
 
-## Taq-Seq analysis:
+To run each pipeline, install miniconda. Then run:
+
+```
+conda create -n ap2020 snakemake-minimal
+conda activate ap2020
+```
+
+Then navigate into a directory and run the snakefile:
+
+```
+snakemake --use-conda
+```
