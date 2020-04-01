@@ -14,8 +14,10 @@ res <- files[1:5] %>%
   map_dfr(read_csv, .id = "source") %>%
   mutate(source = gsub("outputs\\/deseq2\\/", "", source)) %>%
   mutate(source = gsub("\\.csv", "", source)) %>%
-  filter(padj < .01) %>%
-  select(source, X1, log2FoldChange) 
+  filter(padj < .05) %>%
+  select(source, X1, log2FoldChange) %>%
+  filter(!grepl("sn", X1)) %>%
+  filter(!grepl("RDN", X1))
 
 # pivot wide so each experiment has a col of log2fold changes
 res_wide <- pivot_wider(data = res, id_cols = X1, names_from = source, values_from = log2FoldChange)
