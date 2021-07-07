@@ -1,5 +1,5 @@
 # Aguilar and Paul et al 2020
-This github repository contain code for analysis of ribo-purified, oligo-dT enriched, and 3' tag-seq rna-sequencing data which is published as Aguilar and Paul et. al., 2020.
+This github repository contain code for analysis of ribo-purified, oligo-dT enriched, and 3' tag-seq rna-sequencing data from Aguilar and Paul et. al., 2020.
 
 Each folder contains a snakefile that coordinates preprocessing, analysis, and visualization of each dataset. 
 
