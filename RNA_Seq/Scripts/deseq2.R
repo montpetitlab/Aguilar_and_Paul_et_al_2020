@@ -2,9 +2,15 @@ library(DESeq2)
 library(tximport)
 library(readr)
 
+## Read in metadata and counts
+# samples <- read_csv("inputs/ribo-samples.csv")
 samples <- read_csv(snakemake@input[['samples']])
 counts <- tximport(files = samples$filename, type = "salmon", txOut = TRUE)
-## Read in metadata and counts
+
+## write out counts to a file
+counts_df <- counts$counts
+colnames(counts_df) <- samples$sample
+write.csv(counts_df, "outputs/deseq2/ribo-counts-named.csv", quote = F)
 
 ## Run differential expression 
 dds <- DESeqDataSetFromTximport(counts,
